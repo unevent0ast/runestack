@@ -240,7 +240,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
     <h3>How to play</h3>
     <ul>
       <li>Drag or tap a gem stack from the tray, then drop it on an empty slab.</li>
-      <li>Matching gems tumble on their own. They gather on an opened ledge when one is in the group, especially when the pile is about to burst. Otherwise they pour off whichever stack uncovers another match underneath, so cascades keep going. If neither way uncovers anything, they flow onto the stack with the most of that gem on top, and on a tie onto the stack you just placed.</li>
+      <li>Matching gems tumble on their own. They gather next to boulders, ice or fungus the level still needs cleared, and on an opened ledge when one is in the group, especially when the pile is about to burst. Otherwise they pour off whichever stack uncovers another match underneath, so cascades keep going. If neither way uncovers anything, they flow onto the stack with the most of that gem on top, and on a tie onto the stack you just placed.</li>
       <li>Before you drop, you see the result. While dragging, or after tapping a slab once, arrows show every tumble and the gem count it ends with. Tap the same slab again to place.</li>
       <li>10 or more of one gem on top vanish for points. Extra clears in the same turn multiply.</li>
       <li>The number on a stack is how many matching gems sit on top.</li>
@@ -526,7 +526,8 @@ function place(slot,k,fromX,fromY){
 /* --- tumbling: every merge is automatic and follows one rule ---
    Touching stacks with the same top gem form a group. Where the group lands is decided in order:
    1. onto a stack that opens a ledge wanting that gem
-   2. if the pile will burst (10+), onto the highest opened ledge for its score multiplier
+   2. if the pile will burst (10+), next to the most obstacles the level still needs cleared (boulders, ice, fungus)
+   2b. if it will burst, onto the highest opened ledge for its score multiplier
    3. so the most stacks uncover a gem matching a neighbor (a cascade)
    4. onto the highest opened ledge in the group
    5. onto a stack beside a ledge that wants that gem
@@ -556,6 +557,11 @@ function uncovers(cells,comp,dest,col){
 }
 // would piling the whole group onto `dest` open a ledge (u), or at least feed one that wants this gem (p)?
 function ledgeGain(cells,dest,col,total){let u=0,p=0;for(const n of nbrsIn(cells,dest)){const L=cells[n].lock;if(L&&L.col===col){if(total>=L.n)u++;else p++}}return[u,p]}
+// which obstacle objectives are still unfinished; set before any tumble is worked out
+let obstNeed={};
+function needObst(){const n={};if(G)(LV().tasks||[]).forEach(t=>{if((t.k==='boulder'||t.k==='ice'||t.k==='fungus')&&taskHave(t)<t.n)n[t.k]=1});return n}
+function obstNear(cells,k){if(!obstNeed.boulder&&!obstNeed.ice&&!obstNeed.fungus)return 0;let n=0;
+  for(const x of nbrsIn(cells,k)){const c=cells[x];if(obstNeed.boulder&&c.rubble)n++;if(obstNeed.ice&&c.ice)n++;if(obstNeed.fungus&&c.fungus)n++}return n}
 function nextHop(cells,dm){
   const keys=[...dm.entries()].sort((x,y)=>y[1]-x[1]).map(x=>x[0]);
   for(const d of keys){
@@ -566,9 +572,11 @@ function nextHop(cells,dm){
     if(comp.length<2)continue;
     // first preference: pour off the stacks whose removal uncovers another match (a cascade)
     const total=comp.reduce((a,m)=>a+topRun(cells[m].stack).n,0),score={};
-    // an opened ledge multiplies the score, so piles gather up there: always when they'll burst, otherwise right after cascades
-    for(const m of comp){const[u,pr]=ledgeGain(cells,m,col,total),el=cells[m].elev||0;score[m]=[u,total>=10?el:0,uncovers(cells,comp,m,col),el,pr]}
-    const beats=(a,b)=>{for(let i=0;i<5;i++)if(score[a][i]!==score[b][i])return score[a][i]>score[b][i];return better(cells,dm,a,b)};
+    // an opened ledge multiplies the score, so piles gather up there: always when they'll burst, otherwise right after cascades.
+    // obstacles the level still needs cleared (boulders, ice, fungus) pull piles next to them, most of all when the pile will burst
+    for(const m of comp){const[u,pr]=ledgeGain(cells,m,col,total),el=cells[m].elev||0,ob=obstNear(cells,m),boom=total>=10;
+      score[m]=[u,boom?ob:0,boom?el:0,uncovers(cells,comp,m,col),ob,el,pr]}
+    const beats=(a,b)=>{for(let i=0;i<7;i++)if(score[a][i]!==score[b][i])return score[a][i]>score[b][i];return better(cells,dm,a,b)};
     let dest=comp[0];for(const m of comp)if(m!==dest&&beats(m,dest))dest=m;
     const par={},dist={[dest]:0},q=[dest];
     for(let i=0;i<q.length;i++)for(const n of nbrsIn(cells,q[i]))if(seen.has(n)&&dist[n]==null){dist[n]=dist[q[i]]+1;par[n]=q[i];q.push(n)}
@@ -579,9 +587,9 @@ function nextHop(cells,dm){
   return null;
 }
 // dry run of a whole turn on a copy of the board, for the drag preview
-function simulate(k,stack){return simulateOn(G.cells,k,stack)}
+function simulate(k,stack){obstNeed=needObst();return simulateOn(G.cells,k,stack)}
 function simulateOn(src,k,item){
-  const cells={};for(const kk in src){const c=src[kk];cells[kk]={q:c.q,r:c.r,elev:c.elev||0,lock:c.lock?{...c.lock}:null,stack:c.stack.slice(),ice:c.ice||0,gate:c.gate||null}}
+  const cells={};for(const kk in src){const c=src[kk];cells[kk]={q:c.q,r:c.r,elev:c.elev||0,lock:c.lock?{...c.lock}:null,stack:c.stack.slice(),ice:c.ice||0,rubble:!!c.rubble,fungus:!!c.fungus,gate:c.gate||null}}
   const dm=new Map();let st=0;
   if(isVial(item)){const col=vialCol(item);cells[k].stack=[col];dm.set(k,++st);
     nbrsIn(cells,k).forEach(n=>{const c=cells[n];if(c.lock||c.ice||!c.stack.length)return;recolorTop(c.stack,col);dm.set(n,++st)})}
@@ -598,6 +606,7 @@ function simulateOn(src,k,item){
   return{k,hops,clears,opens,pts,cells};
 }
 function chainStep(){
+  obstNeed=needObst();
   mode='anim';updateUI();
   if(++chainSteps>150){finishMove();return}
   checkUnlocks();
@@ -937,6 +946,7 @@ function botPlay(def,seed,cap){
     if(!tray.length)tray=[gen(),gen(),gen()];
     const item=tray.shift(),E=empt();if(!E.length)return{win:false,turns:turn};
     let best=null,bs=-1e9;
+    obstNeed={};(def.tasks||[]).forEach(t=>{if((t.k==='boulder'||t.k==='ice'||t.k==='fungus')&&(tkb[taskKey(t)]||0)<t.n)obstNeed[t.k]=1});
     for(const k of E){const r=simulateOn(cells,k,item);
       let sc=r.pts+400*r.opens.length+15*r.hops.length+(r.clears.length>=2?300:0)+R()*3;
       if(!r.hops.length)sc-=item.length*2+Object.keys(cells).filter(x=>x!==k&&!cells[x].lock&&nbrsIn(cells,k).includes(x)&&cells[x].stack.length).length*4;
