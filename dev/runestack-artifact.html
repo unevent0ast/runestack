@@ -240,7 +240,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
     <h3>How to play</h3>
     <ul>
       <li>Drag or tap a gem stack from the tray, then drop it on an empty slab.</li>
-      <li>Matching gems tumble on their own. They pour off whichever stack uncovers another match underneath, so cascades keep going. If neither way uncovers anything, they flow onto the stack with the most of that gem on top, and on a tie onto the stack you just placed.</li>
+      <li>Matching gems tumble on their own. They gather on an opened ledge when one is in the group, especially when the pile is about to burst. Otherwise they pour off whichever stack uncovers another match underneath, so cascades keep going. If neither way uncovers anything, they flow onto the stack with the most of that gem on top, and on a tie onto the stack you just placed.</li>
       <li>Before you drop, you see the result. While dragging, or after tapping a slab once, arrows show every tumble and the gem count it ends with. Tap the same slab again to place.</li>
       <li>10 or more of one gem on top vanish for points. Extra clears in the same turn multiply.</li>
       <li>The number on a stack is how many matching gems sit on top.</li>
@@ -526,9 +526,11 @@ function place(slot,k,fromX,fromY){
 /* --- tumbling: every merge is automatic and follows one rule ---
    Touching stacks with the same top gem form a group. Where the group lands is decided in order:
    1. onto a stack that opens a ledge wanting that gem
-   2. so the most stacks uncover a gem matching a neighbor (a cascade)
-   3. onto a stack beside a ledge that wants that gem
-   4. onto the member with the most of that gem on top.
+   2. if the pile will burst (10+), onto the highest opened ledge for its score multiplier
+   3. so the most stacks uncover a gem matching a neighbor (a cascade)
+   4. onto the highest opened ledge in the group
+   5. onto a stack beside a ledge that wants that gem
+   6. onto the member with the most of that gem on top.
    Every group finishes gathering before anything bursts, and ledges open before any clear. Ties go to the stack that changed most
    recently (usually the one you just placed), then the taller stack.
    Gems hop one stack at a time along the shortest path, so nothing gets stranded. */
@@ -564,8 +566,9 @@ function nextHop(cells,dm){
     if(comp.length<2)continue;
     // first preference: pour off the stacks whose removal uncovers another match (a cascade)
     const total=comp.reduce((a,m)=>a+topRun(cells[m].stack).n,0),score={};
-    for(const m of comp){const[u,pr]=ledgeGain(cells,m,col,total);score[m]=[u,uncovers(cells,comp,m,col),pr]}
-    const beats=(a,b)=>{for(let i=0;i<3;i++)if(score[a][i]!==score[b][i])return score[a][i]>score[b][i];return better(cells,dm,a,b)};
+    // an opened ledge multiplies the score, so piles gather up there: always when they'll burst, otherwise right after cascades
+    for(const m of comp){const[u,pr]=ledgeGain(cells,m,col,total),el=cells[m].elev||0;score[m]=[u,total>=10?el:0,uncovers(cells,comp,m,col),el,pr]}
+    const beats=(a,b)=>{for(let i=0;i<5;i++)if(score[a][i]!==score[b][i])return score[a][i]>score[b][i];return better(cells,dm,a,b)};
     let dest=comp[0];for(const m of comp)if(m!==dest&&beats(m,dest))dest=m;
     const par={},dist={[dest]:0},q=[dest];
     for(let i=0;i<q.length;i++)for(const n of nbrsIn(cells,q[i]))if(seen.has(n)&&dist[n]==null){dist[n]=dist[q[i]]+1;par[n]=q[i];q.push(n)}
