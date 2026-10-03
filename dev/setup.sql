@@ -10,6 +10,10 @@ create table if not exists public.scores (
   story       int  not null default 0 check (story between 0 and 10000000),
   daily       int  not null default 0 check (daily between 0 and 1000000),
   day         date,
+  best_stack  int  not null default 0 check (best_stack between 0 and 200),
+  best_chain  int  not null default 0 check (best_chain between 0 and 300),
+  best_burst  int  not null default 0 check (best_burst between 0 and 200),
+  best_move   int  not null default 0 check (best_move  between 0 and 10000000),
   created_at  timestamptz not null default now()
 );
 
@@ -27,7 +31,11 @@ create or replace view public.best with (security_invoker = on) as
          (array_agg(name order by created_at desc))[1] as name,
          max(delve_depth) as delve_depth,
          max(delve_score) as delve_score,
-         max(story)       as story
+         max(story)       as story,
+         max(best_stack)  as best_stack,
+         max(best_chain)  as best_chain,
+         max(best_burst)  as best_burst,
+         max(best_move)   as best_move
   from public.scores
   group by device, player;
 

@@ -3,4 +3,4 @@
 A cave-delving gem-stacking puzzle. Play it at https://unevent0ast.github.io/runestack/
 
 - `index.html` is the game.
-- `dev/` holds the source for the Claude version, the build script, and the scoreboard database setup (`setup.sql`).
+- `dev/` holds the source for the Claude version, the build script, and the scoreboard database setup (`setup.sql` for a new board, `records.sql` to add the record columns to an existing one).
