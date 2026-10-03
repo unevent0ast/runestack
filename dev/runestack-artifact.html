@@ -871,15 +871,11 @@ function smash(k){
 function usePotion(k){const c=G.cells[k];if(c.lock||!c.stack.length){toast('Pick a stack to pour the potion on');return}if(c.ice){toast('Frozen stacks resist potions. Crack the ice first.');return}
   potionK=k;mode='potionPick';updateUI();openPotSheet()}
 function openPotSheet(){
+  // plain choices in the usual gem order: working out the best color is part of the puzzle
   const c=G.cells[potionK],cur=topRun(c.stack).col,grid=$('potGrid');grid.innerHTML='';
-  // how many gems each color would gather from this stack's neighbors (useful choices first)
-  const opts=COLORS.slice(0,nColors()).map((col,i)=>{let n=0,piles=0;neighbors(potionK).forEach(nk=>{const nb=G.cells[nk];const t=topOf(nb);if(t===i||t===WILD){n+=topRun(nb.stack).n;piles++}});return{i,col,n,piles}})
-    .filter(o=>o.i!==cur).sort((a,b)=>b.n-a.n||a.i-b.i);
-  opts.forEach(o=>{const b=document.createElement('button');if(o.n)b.className='good';
-    const sw=document.createElement('i');sw.style.background=o.col.b;const t=document.createElement('span');
-    const nm=document.createElement('b');nm.textContent=o.col.n;const sm=document.createElement('small');
-    sm.textContent=o.n?'joins '+o.piles+' neighbor'+(o.piles>1?'s':'')+' (+'+o.n+')':'no neighbors match';t.append(nm,sm);b.append(sw,t);
-    b.addEventListener('click',()=>{$('potSheet').hidden=true;pourPotion(o.i)});grid.append(b)});
+  COLORS.slice(0,nColors()).forEach((col,i)=>{if(i===cur)return;const b=document.createElement('button');
+    const sw=document.createElement('i');sw.style.background=col.b;const nm=document.createElement('b');nm.textContent=col.n;b.append(sw,nm);
+    b.addEventListener('click',()=>{$('potSheet').hidden=true;pourPotion(i)});grid.append(b)});
   $('potLead').textContent='Turn this stack\'s top '+topRun(c.stack).n+' '+COLORS[cur].n+' into:';
   $('potSheet').hidden=false;
 }
