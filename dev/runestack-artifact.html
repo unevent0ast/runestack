@@ -396,11 +396,11 @@ const LEVELS=[
           ['wizard','A gift of our own down here: potion vials. Drop one and every stack it touches turns its color on top.'],
           ['wizard','A fifth gem lives down here, Amethyst.']],
    win:[['witch','Fine. Keep your shiny rocks.'],['wizard','One more. The warlock waits below.']]},
-  {name:'Warlock\'s Sanctum',foe:'warlock',colors:5,seeds:4,diff:3,goal:{type:'gems',n:100},tasks:[{k:'combo',n:1}],seals:{'-2,1':30,'2,0':60,'0,2':90},trick:{kind:'crate',every:5},
+  {name:'Warlock\'s Sanctum',foe:'warlock',colors:5,seeds:4,diff:3,goal:{type:'gems',n:100},tasks:[{k:'streak',n:3}],seals:{'-2,1':30,'2,0':60,'0,2':90},trick:{kind:'crate',every:5},
    ledges:{A:[0,6],B:[3,6],C:[4,6,1],D:[1,7],E:[2,8,1],F:[4,7]},
    intro:[['warlock','Your little lights gutter out down here, old man.'],
           ['wizard','Vex plants cursed crates that blow three turns later. A blast can help you as much as hurt you.'],
-          ['wizard','His crates can blow two piles at once. So can you, if you plan a double burst.']],
+          ['wizard','He wants you rattled. Stay steady: burst something on three drops in a row and his wards break.']],
    win:[['warlock','This is not over.'],['wizard','It never is. Beyond lies the Deep Dark. Stay as long as you dare.']]},
   {name:'The Frozen Gallery',foe:'rime',colors:5,seeds:3,diff:3,goal:{type:'gems',n:120},tasks:[{k:'ice',n:5}],seals:{'-2,2':40,'2,0':70,'0,2':100},trick:{kind:'freeze',every:4},
    ledges:{A:[2,6],B:[3,6,1],C:[0,6],D:[4,7,1],E:[1,7],F:[3,8]},extra:{ice:4,shroud:2},
@@ -429,9 +429,9 @@ const LEVELS=[
 ];
 function taskKey(t){return t.k==='color'?'c'+t.col:t.k}
 function taskText(t){const n=t.n;return{boulder:'break '+n+' boulder'+(n>1?'s':''),ice:'crack '+n+' layer'+(n>1?'s':'')+' of ice',fungus:'burn '+n+' patch'+(n>1?'es':'')+' of fungus',
-  ledge:'open '+n+' ledge'+(n>1?'s':''),combo:n>1?'burst two piles in one move '+n+' times':'burst two piles in one move',big:'burst '+n+' pile'+(n>1?'s':'')+' of 15 or more',
+  ledge:'open '+n+' ledge'+(n>1?'s':''),combo:n>1?'burst two piles in one move '+n+' times':'burst two piles in one move',streak:'burst on '+n+' drops in a row',big:'burst '+n+' pile'+(n>1?'s':'')+' of 15 or more',
   color:'burst '+n+' '+(COLORS[t.col]||{n:'gem'}).n}[t.k]}
-function taskShort(t){return{boulder:'Boulders',ice:'Ice',fungus:'Fungus',ledge:'Ledges',combo:'Double bursts',big:'Piles of 15+',color:(COLORS[t.col]||{n:'Gems'}).n}[t.k]}
+function taskShort(t){return{boulder:'Boulders',ice:'Ice',fungus:'Fungus',ledge:'Ledges',combo:'Double bursts',streak:'Streak',big:'Piles of 15+',color:(COLORS[t.col]||{n:'Gems'}).n}[t.k]}
 function taskHave(t){return Math.min(t.n,(G.tk&&G.tk[taskKey(t)])||0)}
 function tasksDone(){return(LV().tasks||[]).every(t=>taskHave(t)>=t.n)}
 function tk(kind,n){if(!G)return;G.tk=G.tk||{};const before=tasksDone();G.tk[kind]=(G.tk[kind]||0)+(n||1);
@@ -475,7 +475,8 @@ function noteStack(){if(!G||isTut())return;const r=recG();for(const k of ORDER){
 function closeMove(){
   if(!G||isTut())return;
   const r=recG();r.chain=Math.max(r.chain,MV.hops);r.move=Math.max(r.move,MV.pts);
-  if(MV.placed){const was=G.streak||0;G.streak=MV.clears?was+1:0;if(was>=2&&!G.streak)toast('Streak broken')}
+  if(MV.placed){const was=G.streak||0;G.streak=MV.clears?was+1:0;if(was>=2&&!G.streak)toast('Streak broken');
+    const had=(G.tk&&G.tk.streak)||0;if(G.streak>had)tk('streak',G.streak-had)}
   MV.placed=false;keepRecords();
 }
 function keepRecords(){
@@ -490,7 +491,8 @@ const key=(q,r)=>q+','+r;
 const rnd=n=>Math.floor(Math.random()*n);
 function store(fn){try{return fn()}catch(e){return null}}
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const LV=()=>G.def||LEVELS[G.lv];
+// saved caverns from before the streak goal swap their double-burst goal for it
+const LV=()=>{const d=G.def;if(d&&d.tasks&&d.tasks.some(t=>t.k==='combo'))d.tasks=d.tasks.map(t=>t.k==='combo'?{k:'streak',n:3}:t);return d||LEVELS[G.lv]};
 const isDelve=()=>!!(G&&G.def&&G.def.delve);
 function bestGet(){if(G&&G.def&&G.def.daily)return CAMP.daily&&CAMP.daily.date===todayStr()?CAMP.daily.best:0;return isDelve()?(CAMP.delve.bestScore||0):(CAMP.best[G.lv]||0)}
 function bestSet(){if(G.score>bestGet()){if(G.def&&G.def.daily){CAMP.daily={date:todayStr(),best:G.score}}else if(isDelve())CAMP.delve.bestScore=G.score;else CAMP.best[G.lv]=G.score}}
@@ -995,7 +997,7 @@ function genDelveDef(depth,seed,ease){
   const goal={type:'gems',n:Math.max(40,Math.min(170,40+depth*10)-ease*15)};
   // one bonus objective from depth 2, built only from things this cavern can actually produce, scaled to the gem goal
   const tasks=[];
-  if(depth>=2){const opts=[{k:'combo',n:depth>=8?2:1},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.max(15,Math.round(goal.n*.3/5)*5)}];
+  if(depth>=2){const opts=[{k:'streak',n:3},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.max(15,Math.round(goal.n*.3/5)*5)}];
     const nLed=cells.filter(c=>c.elev).length;if(nLed>=2)opts.push({k:'ledge',n:Math.min(nLed,1+Math.floor(depth/6))});
     if(foe==='orc'||cells.filter(c=>c.rubble).length>=2)opts.push({k:'boulder',n:foe==='orc'?3:2});
     if(foe==='rime'||cells.filter(c=>c.ice).length>=2)opts.push({k:'ice',n:foe==='rime'?4:2});
@@ -1013,7 +1015,7 @@ function botPlay(def,seed,cap){
   const R=mulberry(seed),ri=n=>Math.floor(R()*n);
   const cells={};def.cells.forEach(d=>{cells[key(d.q,d.r)]={q:d.q,r:d.r,elev:d.elev,lock:d.lock?{...d.lock}:null,stack:d.stack.slice(),rubble:!!d.rubble,crate:0,ice:d.ice||0,fungus:!!d.fungus,gate:d.gate||null,seal:d.seal||0}});
   const empt=()=>Object.keys(cells).filter(k=>{const c=cells[k];return !c.lock&&!c.seal&&!c.rubble&&!c.crate&&!c.fungus&&!c.stack.length});
-  let spore=5;
+  let spore=5,stk=0;
   const gen=()=>{const len=2+ri(5),runs=Math.min(len,1+ri(3)),st=[];let last=-1;const sizes=Array(runs).fill(1);for(let i=runs;i<len;i++)sizes[ri(runs)]++;
     sizes.forEach(n=>{let c;do{c=ri(def.colors)}while(c===last);last=c;for(let j=0;j<n;j++)st.push(c)});return st};
   const tkb={},tkAdd=(k,n)=>{tkb[k]=(tkb[k]||0)+(n||1)},tasksOk=()=>(def.tasks||[]).every(t=>(tkb[taskKey(t)]||0)>=t.n);
@@ -1031,6 +1033,7 @@ function botPlay(def,seed,cap){
     for(const k in best.cells){cells[k].stack=best.cells[k].stack;cells[k].lock=best.cells[k].lock}
     score+=best.pts;clears+=best.clears.length;best.clears.forEach(c=>{gems+=c.n;if(c.n>=15)tkAdd('big');if(c.col>=0)tkAdd('c'+c.col,c.n)});
     if(best.clears.length>=2)tkAdd('combo');tkAdd('ledge',best.opens.length);
+    stk=best.clears.length?stk+1:0;if(stk>(tkb.streak||0))tkb.streak=stk;
     best.clears.forEach(cl=>nbrsIn(cells,cl.k).forEach(n=>{const c=cells[n];if(c.rubble)tkAdd('boulder');if(c.fungus)tkAdd('fungus');if(c.ice)tkAdd('ice');c.rubble=false;c.fungus=false;if(c.ice)c.ice--}));
     for(const k in cells){const c=cells[k];if(c.seal&&gems>=c.seal)c.seal=0}
     turn++;
