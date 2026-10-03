@@ -1406,7 +1406,7 @@ function localHall(){if(!CAMP.hall)CAMP.hall=[];return CAMP.hall}
 function recordRun(){
   if(!G||G.score<=0||GOD()||isTut())return;
   const L=LV(),kind=isDaily()?'Daily':isDelve()?'Delve':'Story';
-  const h=localHall();if(!G.runId)G.runId=Date.now();const old=h.findIndex(x=>x.run===G.runId);if(old>=0)h.splice(old,1);
+  const h=localHall();if(!G.runId)G.runId=Date.now();const old=h.findIndex(x=>x.run===G.runId);if(old>=0){if(h[old].score>=G.score){saveAll();pushScores();return}h.splice(old,1)}
   h.push({run:G.runId,kind,label:isDaily()?L.name:isDelve()?'Depth '+L.depth:L.name,score:G.score,date:todayStr()});
   h.sort((a,b)=>b.score-a.score);h.length=Math.min(h.length,10);
   if(isDaily()){if(!CAMP.daily||CAMP.daily.date!==todayStr())CAMP.daily={date:todayStr(),best:0};CAMP.daily.best=Math.max(CAMP.daily.best,G.score)}
@@ -2085,10 +2085,12 @@ function showOver(){
   $('overScore').textContent=G.score;
   const acts=$('overActs');acts.innerHTML='';
   const canU=snapshot&&G.powers.undo>0,canH=G.powers.hammer>0,canT=G.powers.tnt>0,any=canU||canH||canT;
-  $('overMsg').textContent=any?'Elderwick: "Not beaten yet! Undo, smash or blast your way out."':(LV().goal.type==='endless'?'Elderwick: "That was deep. Best here: '+bestGet()+'."':'Elderwick: "The cave got the better of us this time. Shall we try again?"');
-  if(canT)acts.append(mkBtn('TNT ('+G.powers.tnt+')','gold',()=>toolToggle('tnt')));
-  if(canU)acts.append(mkBtn('Undo ('+G.powers.undo+')',canT?'':'gold',undo));
-  if(canH)acts.append(mkBtn('Hammer ('+G.powers.hammer+')',canU||canT?'':'gold',()=>toolToggle('hammer')));
+  // continuing with a tool costs half the score; the score you had still counts on the leaderboard
+  const half=Math.floor(G.score/2),pay=f=>()=>{f();if(G&&G.score>0){const h=Math.floor(G.score/2),lost=G.score-h;G.score=h;const[X,Y]=cellXY(0,0);popups.push({x:X,y:Y-30,text:'-'+lost,t0:performance.now(),col:'#ff6a5a'});toast('Score halved to '+h.toLocaleString());saveAll()}updateUI()};
+  $('overMsg').textContent=any?'Elderwick: "Not beaten yet! Using a tool to keep going halves your score to '+half.toLocaleString()+'. Your '+G.score.toLocaleString()+' still counts on the leaderboard."':(LV().goal.type==='endless'?'Elderwick: "That was deep. Best here: '+bestGet()+'."':'Elderwick: "The cave got the better of us this time. Shall we try again?"');
+  if(canT)acts.append(mkBtn('TNT ('+G.powers.tnt+')','gold',pay(()=>toolToggle('tnt'))));
+  if(canU)acts.append(mkBtn('Undo ('+G.powers.undo+')',canT?'':'gold',pay(undo)));
+  if(canH)acts.append(mkBtn('Hammer ('+G.powers.hammer+')',canU||canT?'':'gold',pay(()=>toolToggle('hammer'))));
   acts.append(mkBtn('Try again',any?'':'gold',()=>{$('over').hidden=true;if(isDaily())startDaily(true);else if(isDelve())startDelve(G.def,true);else startLevel(G.lv,true)}));
   acts.append(mkBtn('Hall','',()=>{$('over').hidden=true;openHall(isDaily()?'daily':isDelve()?'delve':'mine')}));
   acts.append(mkBtn('Map','',()=>{$('over').hidden=true;store(()=>localStorage.setItem(runKey(),''));G=null;openMap()}));
