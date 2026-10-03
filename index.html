@@ -1072,23 +1072,23 @@ function restore(json,msg){G=JSON.parse(json);buildOrder();snapshot=null;mode='p
 function redo(){if(!GOD()||!redoS.length||!['pick','over','edit'].includes(mode))return;hist.push(JSON.stringify(G));restore(redoS.pop(),'Redone')}
 function undo(){
   if(GOD()){if(!hist.length||!['pick','over','edit'].includes(mode))return;redoS.push(JSON.stringify(G));restore(hist.pop(),'Undone');return}
-  if(!snapshot||G.powers.undo<1||!(mode==='pick'||mode==='over'))return;
+  if(!snapshot||G.powers.undo<1||mode!=='pick')return;
   const left=G.powers.undo-1;G=JSON.parse(snapshot);G.powers.undo=left;buildOrder();
   snapshot=null;mode='pick';sel=-1;$('over').hidden=true;saveAll();updateUI();toast('Turn undone');
 }
 function shuffle(){if(mode!=='pick'||G.powers.shuffle<1)return;G.powers.shuffle--;G.tray=G.tray.map(x=>x?genStack():null);sel=-1;saveAll();updateUI()}
 function toolToggle(name){
-  if(name==='potion'&&mode==='potionPick'){$('potSheet').hidden=true;potionK=null;mode=emptyCount()?'pick':'over';updateUI();return}
+  if(name==='potion'&&mode==='potionPick'){$('potSheet').hidden=true;potionK=null;mode=emptyCount()?'pick':'over';if(mode==='over')showOver();updateUI();return}
   if(mode===name){mode=emptyCount()?'pick':'over';if(mode==='over')showOver();updateUI();return}
   if(!['pick','over','hammer','tnt','potion'].includes(mode)||G.powers[name]<1)return;
   mode=name;sel=-1;$('over').hidden=true;updateUI();
 }
 function smash(k){
-  const c=G.cells[k];if(!c.stack.length&&!c.tnt&&!c.rubble&&!c.fungus)return;if(c.fungus){c.fungus=false;tk('fungus');const[FX,FY]=cellXY(c.q,c.r);burst(FX,FY-base(c),'#d070a8',14)}if(c.ice)tk('ice',c.ice);c.ice=0;c.shroud=false;if(c.rubble)tk('boulder');
+  const c=G.cells[k],full=boardFull();if(!c.stack.length&&!c.tnt&&!c.rubble&&!c.fungus)return;if(c.fungus){c.fungus=false;tk('fungus');const[FX,FY]=cellXY(c.q,c.r);burst(FX,FY-base(c),'#d070a8',14)}if(c.ice)tk('ice',c.ice);c.ice=0;c.shroud=false;if(c.rubble)tk('boulder');
   const[X,Y]=cellXY(c.q,c.r);
   c.stack.forEach((col,i)=>burst(X,Y-base(c)-i*T,COLORS[col].top,3));
   if(c.rubble)burst(X,Y-base(c),ROCK.top,14);
-  c.stack=[];c.tnt=0;c.rubble=false;c.cursed=false;G.powers.hammer--;shakeUntil=performance.now()+260;snapshot=null;
+  c.stack=[];c.tnt=0;c.rubble=false;c.cursed=false;G.powers.hammer--;payRevive(full);shakeUntil=performance.now()+260;snapshot=null;
   mode='pick';saveAll();updateUI();
 }
 function usePotion(k){const c=G.cells[k];if(c.lock||!c.stack.length){toast('Pick a stack to pour the potion on');return}if(c.ice){toast('Frozen stacks resist potions. Crack the ice first.');return}
@@ -1104,11 +1104,11 @@ function openPotSheet(){
 }
 function pourPotion(col){
   const k=potionK,c=G.cells[k];potionK=null;if(!c)return;
-  recolorTop(c.stack,col);c.shroud=false;G.powers.potion--;snapshot=null;
+  payRevive(boardFull());recolorTop(c.stack,col);c.shroud=false;G.powers.potion--;snapshot=null;
   const[X,Y]=cellXY(c.q,c.r);burst(X,Y-base(c)-c.stack.length*T,COLORS[col].hi,22,1.1);burst(X,Y-base(c)-c.stack.length*T,'#9fd27a',8);
   saveAll();tumbleFrom(k);
 }
-function useTnt(k){if(G.cells[k].lock||G.cells[k].seal)return;G.powers.tnt--;snapshot=null;turnClears=0;newMove(false);dirty=new Map();explode(k);chainEnd='free';mode='anim';updateUI();idleQ.push(chainStep)}
+function useTnt(k){if(G.cells[k].lock||G.cells[k].seal)return;payRevive(boardFull());G.powers.tnt--;snapshot=null;turnClears=0;newMove(false);dirty=new Map();explode(k);chainEnd='free';mode='anim';updateUI();idleQ.push(chainStep)}
 
 
 /* ================= random delve: procedural levels ================= */
@@ -2057,7 +2057,7 @@ function updateUI(){
   const m=G.cleared%CHEST_EVERY;$('meterTxt').textContent=m+'/'+CHEST_EVERY;$('fill').style.width=(m/CHEST_EVERY*100)+'%';
   $('undoN').textContent=G.powers.undo;$('shufN').textContent=G.powers.shuffle;$('hamN').textContent=G.powers.hammer;$('tntN').textContent=G.powers.tnt;$('potN').textContent=G.powers.potion||0;
   const toolOk=['pick','over','hammer','tnt','potion'].includes(mode);
-  $('undoBtn').disabled=GOD()?!(hist.length&&['pick','over','edit'].includes(mode)):!(snapshot&&G.powers.undo>0&&(mode==='pick'||mode==='over'));
+  $('undoBtn').disabled=GOD()?!(hist.length&&['pick','over','edit'].includes(mode)):!(snapshot&&G.powers.undo>0&&mode==='pick');
   $('shufBtn').disabled=!(mode==='pick'&&G.powers.shuffle>0);
   $('hamBtn').disabled=!(G.powers.hammer>0&&toolOk);$('hamBtn').classList.toggle('on',mode==='hammer');
   $('tntBtn').disabled=!(G.powers.tnt>0&&toolOk);$('tntBtn').classList.toggle('on',mode==='tnt');
@@ -2081,16 +2081,24 @@ function updateUI(){
   const ts=tutStep();
   if(ts&&mode==='pick'){if(sel<0)pt.textContent=ts.say;else if(!(preview&&preview.slot===sel))pt.textContent='Now drag it onto the glowing slab. Or tap the slab once to see where the gems will go, then tap it again to place.'}
 }
+// a revival is paid for (half the score) when the tool is actually used, so backing out costs nothing
+let reviving=false;
+const boardFull=()=>!!G&&!emptyCount();
+function payRevive(full){
+  if(!full||!G||G.score<=0)return;
+  const h=Math.floor(G.score/2),lost=G.score-h;G.score=h;const[X,Y]=cellXY(0,0);
+  popups.push({x:X,y:Y-30,text:'-'+lost,t0:performance.now(),col:'#ff6a5a'});toast('Score halved to '+h.toLocaleString());updateUI();
+}
 function showOver(){
   $('overScore').textContent=G.score;
   const acts=$('overActs');acts.innerHTML='';
-  const canU=snapshot&&G.powers.undo>0,canH=G.powers.hammer>0,canT=G.powers.tnt>0,any=canU||canH||canT;
+  const canP=(G.powers.potion||0)>0,canH=G.powers.hammer>0,canT=G.powers.tnt>0,any=canP||canH||canT;reviving=false;
   // continuing with a tool costs half the score; the score you had still counts on the leaderboard
-  const half=Math.floor(G.score/2),pay=f=>()=>{f();if(G&&G.score>0){const h=Math.floor(G.score/2),lost=G.score-h;G.score=h;const[X,Y]=cellXY(0,0);popups.push({x:X,y:Y-30,text:'-'+lost,t0:performance.now(),col:'#ff6a5a'});toast('Score halved to '+h.toLocaleString());saveAll()}updateUI()};
+  const half=Math.floor(G.score/2),pay=name=>()=>toolToggle(name);
   $('overMsg').textContent=any?'Elderwick: "Not beaten yet! Using a tool to keep going halves your score to '+half.toLocaleString()+'. Your '+G.score.toLocaleString()+' still counts on the leaderboard."':(LV().goal.type==='endless'?'Elderwick: "That was deep. Best here: '+bestGet()+'."':'Elderwick: "The cave got the better of us this time. Shall we try again?"');
-  if(canT)acts.append(mkBtn('TNT ('+G.powers.tnt+')','gold',pay(()=>toolToggle('tnt'))));
-  if(canU)acts.append(mkBtn('Undo ('+G.powers.undo+')',canT?'':'gold',pay(undo)));
-  if(canH)acts.append(mkBtn('Hammer ('+G.powers.hammer+')',canU||canT?'':'gold',pay(()=>toolToggle('hammer'))));
+  if(canT)acts.append(mkBtn('TNT ('+G.powers.tnt+')','gold',pay('tnt')));
+  if(canH)acts.append(mkBtn('Hammer ('+G.powers.hammer+')',canT?'':'gold',pay('hammer')));
+  if(canP)acts.append(mkBtn('Potion ('+G.powers.potion+')',canT||canH?'':'gold',pay('potion')));
   acts.append(mkBtn('Try again',any?'':'gold',()=>{$('over').hidden=true;if(isDaily())startDaily(true);else if(isDelve())startDelve(G.def,true);else startLevel(G.lv,true)}));
   acts.append(mkBtn('Hall','',()=>{$('over').hidden=true;openHall(isDaily()?'daily':isDelve()?'delve':'mine')}));
   acts.append(mkBtn('Map','',()=>{$('over').hidden=true;store(()=>localStorage.setItem(runKey(),''));G=null;openMap()}));
