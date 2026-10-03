@@ -420,7 +420,7 @@ const SAVE_CAMP='runestack-camp-v1',SAVE_RUN='runestack-run-v1';
 /* ================= state ================= */
 const cv=document.getElementById('board'),ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
-let P=2,LW=200,LH=300,s=20,T=3,cx=100,cy=120,trayTop=240,trayY=284,bg=null;
+let boardTop=40,P=2,LW=200,LH=300,s=20,T=3,cx=100,cy=120,trayTop=240,trayY=284,bg=null;
 let CAMP={unlocked:0,done:[],best:[],bag:{undo:2,shuffle:1,hammer:1,tnt:1}};
 const START_BAG={undo:2,shuffle:1,hammer:1,tnt:1,potion:1};
 let potionK=null,preview=null,pvKey='',hist=[],redoS=[],edT=null;
@@ -449,7 +449,8 @@ function newLevel(i,def){
   }
   G={lv:def?'delve':i,def:def||null,cells,tray:[],score:0,powers:{...(def?(def.daily?START_BAG:CAMP.delve.bag):CAMP.bag)},cleared:0,clears:0,gems:0,tk:{},trickIn:L.trick?L.trick.every:0,trickIdx:0,turns:0};
   if(!def){const floor=Object.values(cells).filter(c=>!c.elev&&!c.seal&&(c.q||c.r)).sort(()=>Math.random()-.5).slice(0,L.seeds);
-    floor.forEach(c=>{const col=rnd(L.colors),n=2+rnd(3);for(let k=0;k<n;k++)c.stack.push(col)});
+    floor.forEach(c=>{const near=new Set(DIRS.map(([dq,dr])=>cells[key(c.q+dq,c.r+dr)]).filter(x=>x&&x.stack.length).map(x=>x.stack[x.stack.length-1]));
+      let col=rnd(L.colors);for(let t=0;t<8&&near.has(col);t++)col=rnd(L.colors);const n=2+rnd(3);for(let k=0;k<n;k++)c.stack.push(col)});
     applyExtras(cells,L,L.colors,rnd)}
   G.tray=genTray();
   sel=-1;active=null;snapshot=null;flyers=[];pending={};particles=[];popups=[];blasts=[];idleQ=[];
@@ -905,7 +906,8 @@ function genDelveDef(depth,seed,ease){
   // starting gems
   const fl=cells.filter(c=>!c.elev&&(c.q||c.r)).sort(()=>R()-.5);
   const seeds=Math.min(5,2+ri(2)+Math.floor(depth/5));
-  fl.slice(0,seeds).forEach(c=>{const a=ri(colors),n=2+ri(3);for(let i=0;i<n;i++)c.stack.push(a);if(depth>=3&&R()<.4){let b=ri(colors);if(b===a)b=(b+1)%colors;for(let i=0;i<1+ri(2);i++)c.stack.push(b)}});
+  const topAt=(q,r)=>{const x=cells.find(c=>c.q===q&&c.r===r);return x&&x.stack.length?x.stack[x.stack.length-1]:-1};
+  fl.slice(0,seeds).forEach(c=>{const near=new Set(DIRS.map(([dq,dr])=>topAt(c.q+dq,c.r+dr)));let a=ri(colors);for(let t=0;t<8&&near.has(a);t++)a=ri(colors);const n=2+ri(3);for(let i=0;i<n;i++)c.stack.push(a);if(depth>=3&&R()<.4){let b=ri(colors);if(b===a)b=(b+1)%colors;for(let i=0;i<1+ri(2);i++)c.stack.push(b)}});
   let fi=seeds;const floorN=cells.filter(c=>!c.elev).length;let blocked=0;const blockCap=Math.max(2,Math.floor(floorN*.2));
   const take=n=>{const r=fl.slice(fi,fi+n);fi+=n;return r};
   if(themes.includes('shroud'))take(1+ri(2)).forEach(c=>{const a=ri(colors);let b=(a+1+ri(colors-1))%colors;for(let m=0;m<2+ri(3);m++)c.stack.push(b);for(let m=0;m<2+ri(2);m++)c.stack.push(a);c.shroud=true});
@@ -1374,14 +1376,15 @@ function layout(){
     trayTop=LH-trayH;
     const sw=(LW-8)/(maxX-minX+2),sh=(trayTop-6-TOP-maxE*EH-PL)/(maxY-minY+2*half);
     s=Math.max(10,Math.floor(Math.min(sw,sh,34)));T=s>=16?3:2;
-    trayH=Math.max(40,Math.round(s*SQ*1.75+6*T+10));
+    trayH=Math.max(44,Math.round(s*SQ*1.9+6*T+14));
   }
-  trayTop=LH-trayH;trayY=LH-Math.max(12,Math.round(s*SQ*.9));
+  trayTop=LH-trayH;trayY=LH-Math.round(s*SQ*.87)-7;
   cx=Math.round(LW/2-(minX+maxX)/2*s);
   cy=trayTop-6-(maxY+half)*s;
   const topEdge=cy+(minY-half)*s-maxE*EH-PL-TOP;
   if(topEdge>0)cy-=topEdge*.45;
   cy=Math.round(cy);
+  boardTop=Math.round(cy+(minY-half)*s-maxE*EH-PL);
   buildBg();
 }
 function cellXY(q,r){return[cx+s*1.5*q,cy+s*R3*(r+q/2)*SQ]}
@@ -1560,7 +1563,7 @@ function render(){
   ctx.setTransform(1,0,0,1,0,0);
   if(bg)ctx.drawImage(bg,0,0);else{ctx.fillStyle='#121420';ctx.fillRect(0,0,LW,LH)}
   if(!G)return;
-  const ty=Math.round(Math.min(LH*.3,cy-s*2));drawTorch(14,ty);drawTorch(LW-15,ty);
+  const ty=Math.max(8,Math.min(Math.round(LH*.3),boardTop-14));drawTorch(12,ty);drawTorch(LW-13,ty);
   ctx.fillStyle='#f0c070';motes.forEach(m=>{ctx.globalAlpha=.25+.25*Math.sin(now/600+m.ph);ctx.fillRect(Math.round(m.x),Math.round(m.y),1,1)});ctx.globalAlpha=1;
   if(now<shakeUntil){const a=now-quakeAt<1500&&quakeMag?quakeMag+1:1;ctx.translate(rnd(a*2+1)-a,rnd(a+1)-Math.floor(a/2))}
   else if(G.quakeNext&&mode==='pick'&&!RM&&Math.random()<.04*G.quakeNext.mag)ctx.translate(rnd(3)-1,0);
