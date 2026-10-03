@@ -273,6 +273,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
       <li>Frozen stacks can't move until bursts next to them crack the ice. Shrouded stacks hide everything but their top gems. Fungus creeps onto empty slabs until a burst burns it. Rune gates link two slabs as if they touched.</li>
       <li>The Deepwarden causes earthquakes. A rumble warns you two turns ahead, and the corner shows how big it will be. Quakes knock gems off stack tops onto neighbors, which can start tumbles.</li>
       <li>The flames show a level's difficulty, from 1 to 5.</li>
+      <li>Blast gems (red, banded in gold) ride inside tray stacks. One goes off the moment nothing sits on it: on top it blows where you drop it, buried it waits for the gems above to leave. Its pile splits apart and each color flies to a matching stack or empty slab next door. It also knocks the top gem off every neighbor and sets off any Blast gem beside it.</li>
       <li>Clearing gems fills the chest meter. Chests give Undo, Shuffle, Hammer or TNT. TNT wipes the stack you tap and knocks 4 gems off each neighbor.</li>
     </ul>
     <div class="godrow"><div><b>God mode</b><span>Free undo and redo, 99 of every tool, every level open, and an editor to build your own setups.</span></div><button class="btn" id="godToggle">Off</button></div>
@@ -340,6 +341,9 @@ const WILD=6;
 (()=>{const P={n:'Prism',b:'#dfe6ff'};Object.assign(P,mat(P.b));
   P.fac=['#ffb3c4','#ffe0a0','#b8f2c4','#a8dcff','#d6b8ff','#ffc4ec'];P.table='#ffffff';P.core='#f2eeff';P.glint='#ffffff';
   P.l='#e6ecff';P.m='#c4ccee';P.d='#a2a8d4';P.sep='#7a7fa8';P.hi='#ffffff';COLORS.push(P)})();
+// Blast gem: a fused charge that sits inside a pile. It goes off the moment nothing is on top of it.
+const BLAST=7;
+(()=>{const B={n:'Blast gem',b:'#c8362a',blast:true};Object.assign(B,mat(B.b));B.glint='#ffe08a';B.band='#f2c14e';B.bandD='#b8862a';COLORS.push(B)})();
 const SHROUD=mat('#3a3848'),ICE='#bfe8ff';
 const SLAB=mat('#4c5168'),SLAB_HL=mat('#5f6688'),SLAB_HL2=mat('#7e86b0'),CLIFF=mat('#2c2f45'),LOCKED=mat('#2a2c40'),SOCKET=mat('#1c1d2c'),ROCK=mat('#6e645a');
 const CRATE=mat('#d8432f'),CRATE_HOT=mat('#ff9a7a'),BAND=mat('#f2c14e'),CURSE=mat('#5b2a8a'),CURSE_HOT=mat('#c08cff'),CURSE_BAND=mat('#2a1440');
@@ -466,8 +470,8 @@ const streakX=n=>STREAK[Math.max(0,Math.min(n,STREAK.length-1))];
 const rainbowX=n=>n>=4?3:n===3?2:n===2?1.5:1;
 const spreadX=h=>Math.round((1+.1*h)*10)/10;
 const fx=x=>String(Math.round(x*100)/100);
-let MV={hops:0,cols:new Set(),pts:0,clears:0,s:0,placed:false};
-function newMove(placed){MV={hops:0,cols:new Set(),pts:0,clears:0,placed,s:placed?(G.streak||0)+1:(G.streak||0)}}
+let MV={hops:0,cols:new Set(),pts:0,clears:0,s:0,placed:false},litQ=new Set();
+function newMove(placed){litQ=new Set();MV={hops:0,cols:new Set(),pts:0,clears:0,placed,s:placed?(G.streak||0)+1:(G.streak||0)}}
 // personal records, per run (G.rec) and per player (CAMP.rec)
 const REC_NAME={stack:'Tallest stack',chain:'Longest chain',burst:'Biggest burst',move:'Best move'};
 function recG(){return G.rec||(G.rec={stack:0,chain:0,burst:0,move:0})}
@@ -538,7 +542,10 @@ function genStack(){
 function deepness(){return isDelve()?LV().depth:isDaily()?4:(typeof G.lv==='number'?G.lv:0)}
 function genTray(){
   const t=[genStack(),genStack(),genStack()],d=deepness(),r=Math.random();
-  if(G.lv!==0&&G.score>=150&&r<.15)t[rnd(3)]='tnt';
+  if(G.lv!==0&&G.score>=150&&r<.15){const x=t[rnd(3)];
+    // sometimes on top (goes off where you drop it), usually buried between two runs (goes off once the gems above leave)
+    const cuts=[];for(let i=1;i<x.length;i++)if(x[i]!==x[i-1])cuts.push(i);
+    if(Math.random()<.4||!cuts.length)x.push(BLAST);else x.splice(cuts[rnd(cuts.length)],0,BLAST)}
   else if(d>=2&&r<.28)t[rnd(3)]='vial:'+rnd(nColors());
   if(d>=3&&Math.random()<.12){const x=t[rnd(3)];if(Array.isArray(x))x.push(WILD)}
   return t;
@@ -546,13 +553,14 @@ function genTray(){
 const isTnt=x=>x==='tnt';
 const isVial=x=>typeof x==='string'&&x.startsWith('vial');
 const vialCol=x=>+x.split(':')[1];
-const gemMatch=(a,b)=>a>=0&&b>=0&&(a===b||a===WILD||b===WILD);
+const gemMatch=(a,b)=>a>=0&&b>=0&&a!==BLAST&&b!==BLAST&&(a===b||a===WILD||b===WILD);
 const base=c=>PL+c.elev*EH;
 function cellH(c){return c.tnt?4*T:c.rubble||c.fungus?2*T:c.stack.length*T}
 const isEmpty=c=>!c.lock&&!c.seal&&!c.tnt&&!c.rubble&&!c.fungus&&!c.stack.length;
 // the run of matching gems on top; Prism gems join whatever color sits under them
 function topRun(st){if(!st||typeof st==='string'||!st.length)return{col:-1,n:0};
-  let n=0,col=WILD;for(let i=st.length-1;i>=0;i--){const g=st[i];if(g===WILD||g===col){n++;continue}if(col===WILD){col=g;n++;continue}break}return{col,n}}
+  if(st[st.length-1]===BLAST)return{col:-1,n:0};
+  let n=0,col=WILD;for(let i=st.length-1;i>=0;i--){const g=st[i];if(g===BLAST)break;if(g===WILD||g===col){n++;continue}if(col===WILD){col=g;n++;continue}break}return{col,n}}
 function neighbors(k){return nbrsIn(G.cells,k)}
 function matchesFor(k,col){return neighbors(k).filter(nk=>gemMatch(topOf(G.cells[nk]),col))}
 function matches(k){const col=topOf(G.cells[k]);if(col<0)return[];return matchesFor(k,col)}
@@ -598,6 +606,35 @@ function place(slot,k,fromX,fromY){
 let dirty=new Map(),stamp=0,chainSteps=0,chainEnd='turn';
 function touch(k){dirty.set(k,++stamp)}
 function nbrsIn(cells,k){const c=cells[k],r=DIRS.map(([dq,dr])=>key(c.q+dq,c.r+dr)).filter(x=>cells[x]);if(c.gate&&cells[c.gate])r.push(c.gate);return r}
+/* --- blast gems ---
+   When one goes off: the top gem of every neighboring stack is knocked off (risky), any neighbor holding a blast gem
+   goes off next (chain reaction), and its own pile splits apart: each color run, top first, flies onto a neighbor whose
+   top matches it, or else an empty slab. The bottom run stays put, and so does any run with nowhere to land. */
+const blastOpen=c=>c&&!c.lock&&!c.seal&&!c.ice&&!c.rubble&&!c.fungus&&!c.tnt&&!c.crate;
+function blastOn(cells,k){
+  const c=cells[k],out={flings:[],knocked:[],chain:[],blasts:0},nb=nbrsIn(cells,k);
+  const st=c.stack.filter(g=>g===BLAST?(out.blasts++,false):true);
+  nb.forEach(n=>{const d=cells[n];if(d.lock||d.ice||!d.stack.length)return;
+    if(d.stack.includes(BLAST)){out.chain.push(n);return}
+    out.knocked.push({k:n,col:d.stack.pop()})});
+  const runs=[];st.forEach(g=>{const R=runs[runs.length-1];
+    if(R&&(g===R.col||g===WILD||R.col===WILD)){if(R.col===WILD)R.col=g;R.gems.push(g)}else runs.push({col:g,gems:[g]})});
+  const stay=new Set(runs.slice(0,1));
+  for(let i=runs.length-1;i>=1;i--){const R=runs[i];let best=null,bv=-1;
+    for(const n of nb){const d=cells[n];if(!blastOpen(d)||out.chain.includes(n))continue;
+      const t=topRun(d.stack),v=d.stack.length?(gemMatch(t.col,R.col)?100+t.n:-1):50;
+      if(v>bv){bv=v;best=n}}
+    if(best==null){stay.add(R);continue}
+    cells[best].stack.push(...R.gems);out.flings.push({from:k,to:best,gems:R.gems,col:R.col})}
+  c.stack=[];runs.forEach(R=>{if(stay.has(R))c.stack.push(...R.gems)});
+  return out;
+}
+// which pile goes off next: a chained neighbor first, else any pile with a blast gem uncovered on top
+function nextBlastIn(cells,lit){
+  for(const x of lit){const c=cells[x];lit.delete(x);if(c&&!c.ice&&!c.lock&&c.stack.includes(BLAST))return x}
+  for(const x in cells){const c=cells[x],n=c.stack.length;if(n&&c.stack[n-1]===BLAST&&!c.ice&&!c.lock)return x}
+  return null;
+}
 function topOf(c){return !c.lock&&!c.ice&&c.stack.length?topRun(c.stack).col:-1}
 function better(cells,dm,a,b){
   const A=cells[a],B=cells[b],ra=topRun(A.stack).n,rb=topRun(B.stack).n;
@@ -649,7 +686,8 @@ function nextHop(cells,dm){
 // dry run of a whole turn on a copy of the board, for the drag preview
 function simulate(k,stack){obstNeed=needObst();return simulateOn(G.cells,k,stack,isTut()?1:streakX((G.streak||0)+1))}
 function simulateOn(src,k,item,sk){sk=sk||1;const cols=new Set();
-  const cells={};for(const kk in src){const c=src[kk];cells[kk]={q:c.q,r:c.r,elev:c.elev||0,lock:c.lock?{...c.lock}:null,stack:c.stack.slice(),ice:c.ice||0,rubble:!!c.rubble,fungus:!!c.fungus,gate:c.gate||null}}
+  const cells={};for(const kk in src){const c=src[kk];cells[kk]={q:c.q,r:c.r,elev:c.elev||0,lock:c.lock?{...c.lock}:null,stack:c.stack.slice(),ice:c.ice||0,rubble:!!c.rubble,fungus:!!c.fungus,gate:c.gate||null,seal:c.seal||0,tnt:c.tnt||0}}
+  const lit=new Set(),booms=[];
   const dm=new Map();let st=0;
   if(isVial(item)){const col=vialCol(item);cells[k].stack=[col];dm.set(k,++st);
     nbrsIn(cells,k).forEach(n=>{const c=cells[n];if(c.lock||c.ice||!c.stack.length)return;recolorTop(c.stack,col);dm.set(n,++st)})}
@@ -657,19 +695,23 @@ function simulateOn(src,k,item,sk){sk=sk||1;const cols=new Set();
   const hops=[],clears=[],opens=[];let guard=0,mult=0,pts=0;
   while(guard++<120){
     for(const kk in cells){const L=cells[kk].lock;if(!L)continue;if(nbrsIn(cells,kk).some(n=>{const t=topRun(cells[n].lock||cells[n].ice?[]:cells[n].stack);return(t.col===L.col||t.col===WILD)&&t.n>=L.n})){cells[kk].lock=null;opens.push(kk)}}
+    const bk=nextBlastIn(cells,lit);
+    if(bk!=null){const b=blastOn(cells,bk);booms.push(bk);b.chain.forEach(n=>lit.add(n));pts+=b.blasts*20;dm.set(bk,++st);
+      b.knocked.forEach(x=>dm.set(x.k,++st));b.flings.forEach(f=>{hops.push({from:f.from,to:f.to,n:f.gems.length,col:f.col,blast:true});dm.set(f.to,++st)});continue}
     const h=nextHop(cells,dm);
     if(h){cells[h.to].stack.push(...cells[h.from].stack.splice(-h.n));hops.push(h);dm.set(h.from,++st);dm.set(h.to,++st);continue}
     let cleared=false;
     for(const kk of dm.keys()){const r=topRun(cells[kk].stack);if(r.n>=10){cells[kk].stack.splice(-r.n);mult++;cols.add(r.col);pts+=Math.round(r.n*10*mult*((cells[kk].elev||0)+1)*spreadX(hops.length)*rainbowX(cols.size)*sk);clears.push({k:kk,n:r.n,col:r.col});dm.set(kk,++st);cleared=true;break}}
     if(!cleared)break;
   }
-  return{k,hops,clears,opens,pts,cells};
+  return{k,hops,clears,opens,pts,cells,booms};
 }
 function chainStep(){
   obstNeed=needObst();
   mode='anim';updateUI();
   if(++chainSteps>150){finishMove();return}
   checkUnlocks();noteStack();
+  const bk=nextBlastIn(G.cells,litQ);if(bk!=null){doBlast(bk);idleQ.push(chainStep);return}
   const h=nextHop(G.cells,dirty);
   if(h){MV.hops++;moveTiles(h.from,h.to,h.n,40);touch(h.from);touch(h.to);idleQ.push(chainStep);return}
   // only once every group has finished gathering do piles of 10+ burst
@@ -687,6 +729,22 @@ function finishMove(){
 function recolorTop(st,col){const r=topRun(st).n;for(let i=st.length-r;i<st.length;i++)if(st[i]!==WILD)st[i]=col}
 function restingMatches(){return ORDER.filter(k=>{const c=G.cells[k];return !c.lock&&c.stack.length&&matches(k).length})}
 function tumbleFrom(k){turnClears=0;newMove(false);dirty=new Map();touch(k);chainEnd='free';sel=-1;preview=null;chainStep()}
+function doBlast(k){
+  const c=G.cells[k],[X,Y]=cellXY(c.q,c.r),h0=base(c)+c.stack.length*T,t=performance.now(),r=blastOn(G.cells,k);
+  r.chain.forEach(n=>litQ.add(n));
+  burst(X,Y-h0,'#ff9a3c',28,1.8);burst(X,Y-h0,'#f2c14e',18,1.8);burst(X,Y-h0,'#ffffff',8,1.2);
+  blasts.push({x:X,y:Y-base(c),t0:t,col:'#ff9a3c'});shakeUntil=t+320;
+  r.knocked.forEach(({k:n,col})=>{const d=G.cells[n],[NX,NY]=cellXY(d.q,d.r);burst(NX,NY-base(d)-d.stack.length*T,COLORS[col].top,10,1.4);d.shroud=false;touch(n)});
+  let t0=t+60;
+  r.flings.forEach(f=>{const d=G.cells[f.to],[tx,ty]=cellXY(d.q,d.r),tl=d.stack.length-f.gems.length;
+    f.gems.forEach((g,i)=>{pending[f.to]=(pending[f.to]||0)+1;
+      flyers.push({c:g,x0:X,y0:Y,z0:h0-T*(f.gems.length-i),x1:tx,y1:ty,z1:base(d)+(tl+i)*T,t0:t0+i*40,dur:420,arc:38,key:f.to,wait:true})});
+    t0+=70;touch(f.to)});
+  c.shroud=false;touch(k);
+  const pts=r.blasts*20;G.score+=pts;MV.pts+=pts;MV.hops+=r.flings.length;
+  popups.push({x:X,y:Y-h0-8,text:r.chain.length?'CHAIN!':'BOOM!',t0:t,col:'#ff9a3c'});
+  updateUI();
+}
 function moveTiles(fromK,toK,n,delay){
   const f=G.cells[fromK],t=G.cells[toK],fl=f.stack.length,tl=t.stack.length;
   const moved=f.stack.splice(fl-n,n);f.shroud=false;
@@ -842,8 +900,18 @@ function endTurn(){
   // fungus creeps on its own every few turns
   if(trickKind()!=='spore'&&ORDER.some(k=>G.cells[k].fungus)){G.sporeIn=(G.sporeIn||5)-1;if(G.sporeIn<=0){G.sporeIn=5;spreadFungus(null)}}
   // explosions and hexes can leave matching gems touching: let them tumble too
-  if(dirty.size&&nextHop(G.cells,dirty)){turnClears=0;chainEnd='wrap';idleQ.push(chainStep);mode='anim';updateUI();return}
+  if((dirty.size&&nextHop(G.cells,dirty))||nextBlastIn(G.cells,new Set())!=null){turnClears=0;chainEnd='wrap';idleQ.push(chainStep);mode='anim';updateUI();return}
   wrapTurn();
+}
+function blastTip(){
+  const has=G&&G.tray.some(x=>Array.isArray(x)&&x.includes(BLAST));
+  if(!has||CAMP.seenBlast||isTut())return false;
+  CAMP.seenBlast=true;saveAll();mode='talk';updateUI();
+  dialog([['wizard','Careful with that red gem banded in gold. That\'s a Blast gem.'],
+          ['wizard','It goes off the moment nothing sits on top of it. Drop it on top and it blows right there. Bury it and it waits until the gems above it tumble away or burst.'],
+          ['wizard','When it blows, its pile splits apart and each color flies to a matching stack or an empty slab next door. It also knocks the top gem off every neighbor, and sets off any Blast gem beside it.']],
+    ()=>{mode='pick';updateUI();prismTip()});
+  return true;
 }
 function prismTip(then){
   const has=G&&G.tray.some(x=>Array.isArray(x)&&x.includes(WILD));
@@ -864,7 +932,7 @@ function wrapTurn(){
   if(goalMet()){win();return}
   saveAll();
   if(!emptyCount()){gameOver();return}
-  updateUI();prismTip();
+  updateUI();if(!blastTip())prismTip();
 }
 function goalProgress(){
   const g=LV().goal;
@@ -1090,7 +1158,7 @@ function startDelve(def,skipIntro){
     $('mapSay').textContent='Elderwick is scrying the next cavern...';
     def=buildDelve(d.depth,d.seed)}
   newLevel(null,def);if(GOD())godPowers(true);hist=[];redoS=[];show('game');mode='talk';layout();updateUI();saveAll();
-  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();prismTip()};
+  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();if(!blastTip())prismTip()};
   if(skipIntro)go();else dialog(def.intro,go);
 }
 function newDelveRun(){CAMP.delve.depth=1;CAMP.delve.seed=null;CAMP.delve.bag={...START_BAG};saveAll();G=null;startDelve()}
@@ -1111,7 +1179,7 @@ function dailyDef(){
 function startDaily(skipIntro){
   const def=dailyDef();
   newLevel(null,def);if(GOD())godPowers(true);hist=[];redoS=[];show('game');mode='talk';layout();updateUI();saveAll();
-  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();prismTip()};
+  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();if(!blastTip())prismTip()};
   if(skipIntro)go();else dialog(def.intro,go);
 }
 
@@ -1495,8 +1563,11 @@ function drawTile(X,Y,z0,h,c,isTop,sep,sq){
   const b=hexPts(X,Y-z0,sq),t=hexPts(X,Y-z0-h,sq);
   poly([b[0],b[1],t[1],t[0]],c.d);poly([b[1],b[2],t[2],t[1]],c.m);poly([b[2],b[3],t[3],t[2]],c.l);
   if(c.fac){stroke([t[2],t[3]],c.hi)}
+  if(c.blast){const m=hexPts(X,Y-z0-Math.round(h/2),sq);stroke([m[0],m[1],m[2],m[3]],c.band);const m2=hexPts(X,Y-z0-Math.round(h/2)+1,sq);stroke([m2[0],m2[1],m2[2],m2[3]],c.bandD)}
   if(sep)stroke([b[0],b[1],b[2],b[3]],c.sep);
-  if(isTop){if(c.fac)gemTop(X,Y-z0-h,c,t,sq);else{poly(t,c.top);stroke([t[3],t[4],t[5],t[0]],c.hi)}}
+  if(isTop){if(c.fac)gemTop(X,Y-z0-h,c,t,sq);else{poly(t,c.top);stroke([t[3],t[4],t[5],t[0]],c.hi)}
+    if(c.blast){const fx=Math.round(X),fy=Math.round(Y-z0-h);ctx.fillStyle='#2a1a10';ctx.fillRect(fx,fy-5,1,5);
+      ctx.fillStyle=RM||Math.floor(now/120)%2?'#ffe08a':'#ff6a2a';ctx.fillRect(fx-1,fy-7,3,2);ctx.fillStyle='#ffffff';ctx.fillRect(fx,fy-7,1,1)}}
 }
 function gemTop(X,Y,c,o,sq){
   const inn=hexPtsR(X,Y,s*.52,sq);
@@ -1696,7 +1767,7 @@ function render(){
     ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.10+.04*Math.sin(now/700+X);poly(hexPtsR(X,Y-b,s*1.18),gc.b);poly(hexPtsR(X,Y-b,s*.95),gc.b);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
     const bump=landAt[k]?Math.max(0,1-(now-landAt[k])/160):0;
     drawStack(X,Y+Math.round(bump*2),c.stack,n,b,(c.q*.37+c.r*.61+9)%1,hide);
-    drawNum(topRunN(c.stack,n),X,Y+Math.round(bump*2)-b-n*T,gc.sep);
+    if(c.stack[n-1]!==BLAST)drawNum(topRunN(c.stack,n),X,Y+Math.round(bump*2)-b-n*T,gc.sep);
     if(c.ice)drawIce(X,Y,b,n*T,c.ice,pulse);
     if(c.gate){const gz=Math.round(Y-b-n*T-s*SQ*.55);ctx.fillStyle=OUT;ctx.fillRect(X+Math.round(s*.55)-2,gz-2,5,5);ctx.fillStyle=GATE_COL[(c.gateId||0)%3];ctx.fillRect(X+Math.round(s*.55)-1,gz-1,3,3)}
   }
@@ -1751,7 +1822,7 @@ function render(){
     if(isTnt(st)){drawCrate(X,trayY,lift,TNT_FUSE,false,false);if(i===sel)topOutline(X,trayY,lift+4*T,TORCH);continue}
     if(isVial(st)){drawVial(X,trayY-2-lift,vialCol(st),2,.6+.4*pulse);if(i===sel)topOutline(X,trayY,lift,TORCH);continue}
     drawStack(X,trayY,st,st.length,lift);
-    drawNum(topRun(st).n,X,trayY-lift-st.length*T,COLORS[st[st.length-1]].sep);
+    if(st[st.length-1]!==BLAST)drawNum(topRun(st).n,X,trayY-lift-st.length*T,COLORS[st[st.length-1]].sep);
     if(i===sel)topOutline(X,trayY,lift+st.length*T,TORCH);
   }
   if(mode!=='pick'&&mode!=='edit'){ctx.fillStyle='rgba(18,20,32,.6)';ctx.fillRect(4,trayTop+4,LW-8,LH-trayTop-8)}
@@ -1893,7 +1964,7 @@ function updateUI(){
   else if(sel>=0&&isVial(G.tray[sel])&&!(preview&&preview.slot===sel))pt.textContent='A '+COLORS[vialCol(G.tray[sel])].n+' potion. Drop it and every stack it touches turns '+COLORS[vialCol(G.tray[sel])].n+' on top.';
   else if(sel>=0&&isTnt(G.tray[sel]))pt.textContent='Place the TNT crate on an empty slab. It blows after '+TNT_FUSE+' more turns.';
   else if(sel>=0&&preview&&preview.slot===sel){const h=preview.hops.length,cl=preview.clears.length;
-    pt.textContent=(h?'Gems will tumble '+h+' time'+(h>1?'s':''):'No tumbles from here')+(cl?', clearing '+cl+' for '+preview.pts+' points':'')+'. Tap the same slab again to place, or try another.'}
+    pt.textContent=(preview.booms&&preview.booms.length?(preview.booms.length>1?preview.booms.length+' blasts! ':'Boom! '):'')+(h?'Gems will tumble '+h+' time'+(h>1?'s':''):'No tumbles from here')+(cl?', clearing '+cl+' for '+preview.pts+' points':'')+'. Tap the same slab again to place, or try another.'}
   else if(sel>=0)pt.textContent='Tap a slab to preview where the gems will tumble, or drag the stack there.';
   else if(mode==='pick')pt.textContent=wizardTip();
   const ts=tutStep();
@@ -1927,7 +1998,7 @@ $('dlgNext').addEventListener('click',nextLine);
 function show(id){['titleScr','mapScr','hallScr'].forEach(s2=>{$(s2).hidden=s2!==id});$('game').hidden=id!=='game'}
 function startLevel(i,skipIntro){
   newLevel(i);if(GOD())godPowers(true);hist=[];redoS=[];show('game');mode='talk';layout();updateUI();saveAll();
-  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();prismTip()};
+  const go=()=>{mode='pick';if(!emptyCount())gameOver();updateUI();if(!blastTip())prismTip()};
   const pl=passText(LEVELS[i]);if(skipIntro)go();else dialog(LEVELS[i].intro.concat(pl?[['wizard',pl]]:[]),go);
 }
 function openMap(){
