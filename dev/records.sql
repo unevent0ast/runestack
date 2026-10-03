@@ -4,7 +4,8 @@ alter table public.scores
   add column if not exists best_stack int not null default 0 check (best_stack between 0 and 200),
   add column if not exists best_chain int not null default 0 check (best_chain between 0 and 300),
   add column if not exists best_burst int not null default 0 check (best_burst between 0 and 200),
-  add column if not exists best_move  int not null default 0 check (best_move  between 0 and 10000000);
+  add column if not exists best_move  int not null default 0 check (best_move  between 0 and 10000000),
+  add column if not exists badges text not null default '' check (char_length(badges) <= 400 and badges ~ '^[a-z,]*$');
 
 -- Each player's best results, now with their records.
 create or replace view public.best with (security_invoker = on) as
@@ -16,7 +17,8 @@ create or replace view public.best with (security_invoker = on) as
          max(best_stack)  as best_stack,
          max(best_chain)  as best_chain,
          max(best_burst)  as best_burst,
-         max(best_move)   as best_move
+         max(best_move)   as best_move,
+         (array_agg(badges order by char_length(badges) desc, created_at desc))[1] as badges
   from public.scores
   group by device, player;
 

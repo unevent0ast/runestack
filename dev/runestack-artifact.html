@@ -49,6 +49,22 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .chestrow .bar.thin{min-width:60px}
 #stage{flex:1;min-height:0;position:relative;display:flex;align-items:flex-start;justify-content:center}
 #board{touch-action:none}
+.bshelf{display:flex;flex-direction:column;gap:6px}
+.brow{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;background:var(--stone);border:2px solid var(--edge);padding:7px 9px;box-shadow:0 3px 0 var(--shadow)}
+.brow canvas{width:44px;height:44px;image-rendering:pixelated}
+.brow b{font-size:16px;font-weight:600;display:block}
+.brow small{display:block;font-size:13px;color:var(--muted);line-height:1.3}
+.brow .rar{font-family:var(--font-ui);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.brow.locked{opacity:.62}
+.brow.locked b{color:var(--muted)}
+.bhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.bhead .lab{font-size:13px}
+#badgePop{position:absolute;left:50%;top:38px;transform:translate(-50%,-10px);display:flex;gap:10px;align-items:center;background:#16182a;border:2px solid var(--torch);box-shadow:0 4px 0 var(--shadow),0 0 22px rgba(240,160,64,.35);padding:8px 14px 8px 8px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:5;white-space:nowrap}
+#badgePop.on{opacity:1;transform:translate(-50%,0)}
+#badgePop canvas{width:40px;height:40px;image-rendering:pixelated}
+#badgePop .lab{display:block;font-size:10px;color:var(--torch)}
+#badgePop b{display:block;font-size:16px}
+#badgePop small{display:block;font-size:12px;color:var(--muted)}
 #toast{position:absolute;left:50%;top:6px;transform:translateX(-50%);background:var(--parch);color:var(--parch-ink);font-family:var(--font-ui);font-size:11px;padding:6px 10px;border:2px solid var(--parch-edge);box-shadow:0 3px 0 var(--shadow);white-space:nowrap;pointer-events:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .prompt{min-height:48px;display:flex;align-items:center;gap:8px;background:var(--stone);border:2px solid var(--edge);padding:5px 8px 5px 5px;box-shadow:0 3px 0 var(--shadow)}
 .prompt p{margin:0;flex:1;min-width:0;font-size:14px;line-height:1.25}
@@ -191,6 +207,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
   <main id="stage">
     <canvas class="pix" id="board" aria-label="Cave board"></canvas>
     <div id="toast" hidden></div>
+    <div id="badgePop" aria-live="polite"><canvas width="11" height="11" id="bpIcon"></canvas><span><span class="lab">Badge earned</span><b id="bpName"></b><small id="bpRar"></small></span></div>
   </main>
 
   <div class="prompt" aria-live="polite"><canvas class="pix pf" id="wizPic" width="16" height="16" style="width:40px;height:40px"></canvas><p id="ptext"></p><div id="pbtns"></div></div>
@@ -223,6 +240,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
       <button class="btn" id="toMapBtn">Map</button>
       <button class="btn" id="dailyBtn">Daily Delve</button>
       <button class="btn" id="hallBtn">Hall of Delvers</button>
+      <button class="btn" id="badgeBtn">Badges</button>
       <button class="btn" id="titleTut">Tutorial</button>
       <button class="btn" id="titleHelp">How to play</button>
     </div>
@@ -231,7 +249,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 
 <section class="screen" id="hallScr" hidden>
   <div class="in">
-    <div class="row"><button class="btn sm" id="hallBack">Back</button><h2 class="hh" style="flex:1">Hall of Delvers</h2></div>
+    <div class="row"><button class="btn sm" id="hallBack">Back</button><h2 class="hh" style="flex:1">Hall of Delvers</h2><button class="btn sm" id="hallBadges">Badges</button></div>
     <div class="speaker"><canvas class="pix pf" id="hallWiz" width="16" height="16" style="width:48px;height:48px"></canvas><div class="bubble" id="hallNote">Loading the hall...</div></div>
     <div class="tabs" id="hallTabs"><button class="btn sm" data-tab="daily">Daily</button><button class="btn sm" data-tab="delve">Delve</button><button class="btn sm" data-tab="story">Story</button><button class="btn sm" data-tab="rec">Records</button><button class="btn sm" data-tab="mine">Mine</button></div>
     <div class="tabs sub" id="recTabs" hidden><button class="btn sm" data-rec="stack">Tallest</button><button class="btn sm" data-rec="chain">Chain</button><button class="btn sm" data-rec="burst">Burst</button><button class="btn sm" data-rec="move">Move</button></div>
@@ -265,7 +283,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
       <li>Before you drop, you see the result. While dragging, or after tapping a slab once, arrows show every tumble and the gem count it ends with. Tap the same slab again to place.</li>
       <li>10 or more of one gem on top vanish for points. Extra clears in the same turn multiply.</li>
       <li>Combos multiply every burst. Spread: each tumble in the move adds 10%. Rainbow: bursting 2 colors in one move is x1.5, 3 colors x2, 4 or more x3. Streak: placements in a row that each burst something climb x1.25, x1.5, x2, up to x3. A placement that bursts nothing resets the streak.</li>
-      <li>The Hall of Delvers keeps records too: tallest stack, longest chain, biggest burst and best single move.</li>
+      <li>The Hall of Delvers keeps records too: tallest stack, longest chain, biggest burst and best single move. Badges reward big moments. Each has one bar to clear, and the rarer ones are harder. See them all under Badges on the title screen.</li>
       <li>The number on a stack is how many matching gems sit on top.</li>
       <li>Ledges at the back of the cave are higher ground. Each shows a gem and a target, like 2/6 Topaz. Build a Topaz run of 6 on a stack next to it and the ledge opens. The upper ledges can only be reached from the lower ones.</li>
       <li>Foes act every few turns. The counter in the top corner shows when.</li>
@@ -289,6 +307,15 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
     <div class="whoadd"><input id="whoInput" maxlength="16" placeholder="Type a name" autocomplete="off"><button class="btn gold sm" id="whoAdd">Add player</button></div>
     <p class="lab" id="whoNote" style="text-transform:none;letter-spacing:0;font-family:var(--font-display);font-size:13px"></p>
     <div class="acts"><button class="btn sm" id="whoRename">Rename</button><button class="btn sm" id="whoClose">Done</button></div>
+  </div>
+</div>
+
+<div class="sheet mid" id="badgeSheet" hidden>
+  <div class="card">
+    <div class="bhead"><h3>Badges</h3><span class="lab" id="badgeCount"></span></div>
+    <p id="badgeLead"></p>
+    <div class="bshelf" id="badgeList"></div>
+    <div class="acts"><button class="btn gold" id="badgeClose">Done</button></div>
   </div>
 </div>
 
@@ -478,14 +505,94 @@ function recG(){return G.rec||(G.rec={stack:0,chain:0,burst:0,move:0})}
 function noteStack(){if(!G||isTut())return;const r=recG();for(const k of ORDER){const n=G.cells[k].stack.length;if(n>r.stack)r.stack=n}}
 function closeMove(){
   if(!G||isTut())return;
-  const r=recG();r.chain=Math.max(r.chain,MV.hops);r.move=Math.max(r.move,MV.pts);
+  const r=recG();r.chain=Math.max(r.chain,MV.hops);r.move=Math.max(r.move,MV.pts);r.colors=Math.max(r.colors||0,MV.cols.size);r.booms=Math.max(r.booms||0,MV.booms||0);
   if(MV.placed){const was=G.streak||0;G.streak=MV.clears?was+1:0;if(was>=2&&!G.streak)toast('Streak broken');
-    const had=(G.tk&&G.tk.streak)||0;if(G.streak>had)tk('streak',G.streak-had)}
+    const had=(G.tk&&G.tk.streak)||0;if(G.streak>had)tk('streak',G.streak-had);r.streak=Math.max(r.streak||0,G.streak)}
   MV.placed=false;keepRecords();
+}
+/* ---- badges: one bar to clear each, like console trophies. Rarer ones are simply harder. ---- */
+const RARITY=[{n:'Common',c:'#a4aac4',d:'#5c6180'},{n:'Uncommon',c:'#3fc27a',d:'#1f6e44'},{n:'Rare',c:'#3f8fe8',d:'#1f4f8a'},{n:'Epic',c:'#a066f0',d:'#5a3290'},{n:'Legendary',c:'#f0b03a',d:'#8a5a14'}];
+const BADGES=[
+  {id:'serpent',name:'Serpent',r:0,icon:'snake',stat:'chain',min:4,desc:'Set off 4 tumbles from one drop',unit:'tumbles'},
+  {id:'spire',name:'Spire',r:0,icon:'tower',stat:'stack',min:15,desc:'Pile 15 gems on one slab',unit:'gems'},
+  {id:'hoard',name:'Hoard',r:0,icon:'coins',stat:'move',min:1000,desc:'Score 1,000 points with one drop',unit:'points'},
+  {id:'cataclysm',name:'Cataclysm',r:1,icon:'star',stat:'burst',min:13,desc:'Burst 13 gems at once',unit:'gems'},
+  {id:'wildfire',name:'Wildfire',r:1,icon:'flame',stat:'streak',min:5,desc:'Burst something on 5 drops in a row',unit:'in a row'},
+  {id:'reaction',name:'Chain Reaction',r:1,icon:'bomb',stat:'booms',min:2,desc:'Set off 2 Blast gems with one drop',unit:'blasts'},
+  {id:'delver',name:'Deep Delver',r:1,icon:'down',stat:'depth',min:10,desc:'Reach depth 10 in the Random Delve',unit:'deep'},
+  {id:'prism',name:'Prism Heart',r:2,icon:'prism',stat:'colors',min:3,desc:'Burst 3 different colors with one drop',unit:'colors'},
+  {id:'tower',name:'Tower of the Deep',r:2,icon:'tower',stat:'stack',min:22,desc:'Pile 22 gems on one slab',unit:'gems'},
+  {id:'champion',name:'Champion of the Descent',r:2,icon:'crown',stat:'story',min:1,desc:'Clear every level of the story'},
+  {id:'wyrm',name:'Great Wyrm',r:3,icon:'snake',stat:'chain',min:9,desc:'Set off 9 tumbles from one drop',unit:'tumbles'},
+  {id:'starfall',name:'Starfall',r:3,icon:'star',stat:'burst',min:18,desc:'Burst 18 gems at once',unit:'gems'},
+  {id:'inferno',name:'Inferno',r:3,icon:'flame',stat:'streak',min:10,desc:'Burst something on 10 drops in a row',unit:'in a row'},
+  {id:'abyss',name:'Abyss Walker',r:3,icon:'down',stat:'depth',min:25,desc:'Reach depth 25 in the Random Delve',unit:'deep'},
+  {id:'dragon',name:'Dragon\'s Hoard',r:4,icon:'coins',stat:'move',min:10000,desc:'Score 10,000 points with one drop',unit:'points'},
+  {id:'archmage',name:'Archmage',r:4,icon:'hat',stat:'all',desc:'Earn every other badge'}];
+const BICON={
+  snake:['...xx..','..x..x.','..x....','...xx..','.....x.','x....x.','.xxxx..'],
+  tower:['...x...','..xxx..','..x.x..','..xxx..','..x.x..','.xxxxx.','.xxxxx.'],
+  coins:['..xxx..','.x...x.','..xxx..','.xxxxx.','x.....x','.xxxxx.','.......'],
+  star:['...x...','x..x..x','.x.x.x.','..xxx..','.x.x.x.','x..x..x','...x...'],
+  flame:['...x...','..xx...','..xxx..','.xxxx..','.xx.xx.','.x...x.','..xxx..'],
+  bomb:['.....x.','....x..','..xxx..','.xxxxx.','.xxxxx.','.xxxxx.','..xxx..'],
+  down:['..xxx..','..xxx..','..xxx..','xxxxxxx','.xxxxx.','..xxx..','...x...'],
+  prism:['...x...','..x.x..','.x...x.','xxxxxxx','.x...x.','..x.x..','...x...'],
+  crown:['.......','x..x..x','xx.x.xx','xxxxxxx','xxxxxxx','.......','.......'],
+  hat:['...x...','...xx..','..xxx..','..xxxx.','.xxxxx.','xxxxxxx','.......']};
+const MEDAL=['...ooooo...','..oaaaaao..','.oabbbbbao.','oabbbbbbbao','oabbbbbbbao','oabbbbbbbao','oabbbbbbbao','oabbbbbbbao','.oabbbbbao.','..oaaaaao..','...ooooo...'];
+function drawBadge(cv,b,earned){
+  const x=cv.getContext('2d'),R=RARITY[b.r],lock=!earned;x.clearRect(0,0,11,11);
+  const pal={o:'#0b0a14',a:lock?'#3a3d52':R.d,b:lock?'#2a2c3e':R.c};
+  MEDAL.forEach((row,r)=>[...row].forEach((ch,q)=>{if(ch==='.')return;x.fillStyle=pal[ch];x.fillRect(q,r,1,1)}));
+  if(!lock){x.fillStyle='rgba(255,255,255,.35)';x.fillRect(3,2,3,1);x.fillRect(2,3,1,2)}
+  BICON[b.icon].forEach((row,r)=>[...row].forEach((ch,q)=>{if(ch!=='x')return;x.fillStyle=lock?'#55597a':'#ffffff';x.fillRect(q+2,r+2,1,1)}));
+}
+function badgeStat(st){
+  const rc=CAMP.rec||{};
+  if(st==='depth')return(CAMP.delve&&CAMP.delve.best)||0;
+  if(st==='story')return LEVELS.every((L,i)=>L.goal.type==='endless'||CAMP.done[i])?1:0;
+  if(st==='all')return BADGES.filter(b=>b.stat!=='all'&&CAMP.ach&&CAMP.ach[b.id]).length;
+  return rc[st]||0;
+}
+const badgeMin=b=>b.stat==='all'?BADGES.length-1:b.min;
+let badgeQ=[],badgeOn=false;
+function checkBadges(silent){
+  CAMP.ach=CAMP.ach||{};const got=[];
+  for(const b of BADGES)if(!CAMP.ach[b.id]&&badgeStat(b.stat)>=badgeMin(b)){CAMP.ach[b.id]=Date.now();got.push(b)}
+  if(!silent)got.forEach(b=>{badgeQ.push(b);if(!badgeOn)nextBadge()});
+  return got;
+}
+function nextBadge(){
+  const b=badgeQ.shift();if(!b){badgeOn=false;return}badgeOn=true;
+  drawBadge($('bpIcon'),b,true);$('bpName').textContent=b.name;$('bpRar').textContent=RARITY[b.r].n+' · '+b.desc;$('bpRar').style.color=RARITY[b.r].c;
+  const el=$('badgePop');el.classList.add('on');
+  setTimeout(()=>{el.classList.remove('on');setTimeout(nextBadge,350)},2800);
+}
+function openBadges(){
+  CAMP.ach=CAMP.ach||{};
+  const list=$('badgeList');list.innerHTML='';
+  const players=hallDocs.filter(d=>d.badges!=null),pct=id=>players.length>=2?Math.round(100*players.filter(d=>(','+d.badges+',').includes(','+id+',')).length/players.length):null;
+  const n=BADGES.filter(b=>CAMP.ach[b.id]).length;
+  $('badgeCount').textContent=n+' of '+BADGES.length;
+  $('badgeLead').textContent=n?activeName()+'\'s badges. Grey ones are still out there.':'No badges yet, '+activeName()+'. Every one below is waiting in the deep.';
+  BADGES.slice().sort((a,b)=>(!!CAMP.ach[b.id])-(!!CAMP.ach[a.id])||a.r-b.r).forEach(b=>{
+    const row=document.createElement('div'),earned=!!CAMP.ach[b.id];row.className='brow'+(earned?'':' locked');
+    const cv=document.createElement('canvas');cv.width=11;cv.height=11;drawBadge(cv,b,earned);
+    const tx=document.createElement('div'),nm=document.createElement('b');nm.textContent=b.name;
+    const ds=document.createElement('small');ds.textContent=b.desc;
+    const v=badgeStat(b.stat),meta=document.createElement('small'),rr=document.createElement('span');rr.className='rar';rr.textContent=RARITY[b.r].n;rr.style.color=RARITY[b.r].c;
+    const bits=[];if(b.unit&&v)bits.push((earned?'Best: ':'Best so far: ')+v.toLocaleString()+' '+b.unit);
+    if(b.stat==='all')bits.push(v+' of '+badgeMin(b));
+    const p=pct(b.id);if(p!=null)bits.push(p+'% of delvers');
+    meta.append(rr,document.createTextNode(bits.length?' · '+bits.join(' · '):''));
+    tx.append(nm,ds,meta);row.append(cv,tx);list.append(row)});
+  $('badgeSheet').hidden=false;
 }
 function keepRecords(){
   if(!G||GOD()||isTut())return;
   const r=recG(),c=CAMP.rec||(CAMP.rec={stack:0,chain:0,burst:0,move:0});G.recToast=G.recToast||{};
+  ['colors','booms','streak'].forEach(k=>{if((r[k]||0)>(c[k]||0))c[k]=r[k]});
   for(const k in REC_NAME)if(r[k]>(c[k]||0)){if(c[k]>0&&!G.recToast[k]){G.recToast[k]=1;toast('New record! '+REC_NAME[k]+': '+r[k].toLocaleString())}c[k]=r[k]}
 }
 const RM=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -741,7 +848,7 @@ function doBlast(k){
       flyers.push({c:g,x0:X,y0:Y,z0:h0-T*(f.gems.length-i),x1:tx,y1:ty,z1:base(d)+(tl+i)*T,t0:t0+i*40,dur:420,arc:38,key:f.to,wait:true})});
     t0+=70;touch(f.to)});
   c.shroud=false;touch(k);
-  const pts=r.blasts*20;G.score+=pts;MV.pts+=pts;MV.hops+=r.flings.length;
+  const pts=r.blasts*20;G.score+=pts;MV.pts+=pts;MV.hops+=r.flings.length;MV.booms=(MV.booms||0)+r.blasts;
   popups.push({x:X,y:Y-h0-8,text:r.chain.length?'CHAIN!':'BOOM!',t0:t,col:'#ff9a3c'});
   updateUI();
 }
@@ -1200,11 +1307,13 @@ function normCamp(c){
   if(CAMP.ver<3){if(CAMP.best[6]){CAMP.best[7]=CAMP.best[6];CAMP.best[6]=0}if(CAMP.done[6]){CAMP.done[7]=true;CAMP.done[6]=false}if(CAMP.unlocked>=6)CAMP.unlocked=Math.min(7,CAMP.unlocked+1);CAMP.ver=3}
   // anyone with progress has clearly learned the basics
   if(CAMP.unlocked>0||CAMP.best.some(Boolean)||(CAMP.hall&&CAMP.hall.length)||CAMP.delve.best||CAMP.daily)CAMP.tutDone=true;
+  checkBadges(true);
 }
 function saveProf(){store(()=>localStorage.setItem(SAVE_PROF,JSON.stringify(PROF)))}
 function saveAll(){
   if(!PROF)return;
   CAMP.at=Date.now();
+  if(G&&!GOD()&&!isTut())checkBadges(false);
   store(()=>{localStorage.setItem(campKey(),JSON.stringify(CAMP));localStorage.setItem(runKey(),G&&mode!=='won'?JSON.stringify(G):'')});
   queueCloud();
 }
@@ -1316,7 +1425,7 @@ async function supaLoad(){
     const [best,daily]=await Promise.all([supaGet('best?select=*&limit=500'),supaGet('daily_best?select=*&day=eq.'+todayStr()+'&order=daily.desc&limit=100')]);
     const by={};
     best.forEach(b=>{by[b.device+'|'+b.player]={uid:b.device,pid:b.player,name:b.name,delveDepth:b.delve_depth,delveScore:b.delve_score,story:b.story,daily:null,
-      bestStack:b.best_stack||0,bestChain:b.best_chain||0,bestBurst:b.best_burst||0,bestMove:b.best_move||0}});
+      bestStack:b.best_stack||0,bestChain:b.best_chain||0,bestBurst:b.best_burst||0,bestMove:b.best_move||0,badges:b.badges||''}});
     daily.forEach(d=>{const k=d.device+'|'+d.player;by[k]=by[k]||{uid:d.device,pid:d.player,name:d.name,delveDepth:0,delveScore:0,story:0};by[k].daily={date:d.day,score:d.daily}});
     hallDocs=Object.values(by);supaErr=false;
   }catch(e){supaErr=true}
@@ -1342,11 +1451,12 @@ async function pushScores(){
   const camp={};CAMP.best.forEach((v,i)=>{if(v)camp['l'+i]=v});
   const d=CAMP.delve||{},doc={name:activeName(),delveDepth:d.best||0,delveScore:d.bestScore||0,story:Object.values(camp).reduce((a,b)=>a+b,0),
     daily:CAMP.daily&&CAMP.daily.date===todayStr()?{date:CAMP.daily.date,score:CAMP.daily.best}:null};
+  doc.badges=Object.keys(CAMP.ach||{}).filter(id=>BADGES.some(b=>b.id===id)).join(',');
   const rc=CAMP.rec||{};doc.bestStack=rc.stack||0;doc.bestChain=rc.chain||0;doc.bestBurst=rc.burst||0;doc.bestMove=rc.move||0;
   if(!doc.delveDepth&&!doc.delveScore&&!doc.story&&!doc.daily&&!doc.bestMove&&!doc.bestStack)return;
   const sig=PROF.active+JSON.stringify(doc);if(sig===lastPush)return;
   if(SUPA){const row={device:myId,player:PROF.active,name:doc.name,delve_depth:doc.delveDepth,delve_score:doc.delveScore,story:doc.story,daily:doc.daily?doc.daily.score:0,day:doc.daily?doc.daily.date:null},
-      rec={best_stack:Math.min(doc.bestStack,200),best_chain:Math.min(doc.bestChain,300),best_burst:Math.min(doc.bestBurst,200),best_move:Math.min(doc.bestMove,10000000)};
+      rec={best_stack:Math.min(doc.bestStack,200),best_chain:Math.min(doc.bestChain,300),best_burst:Math.min(doc.bestBurst,200),best_move:Math.min(doc.bestMove,10000000),badges:doc.badges.slice(0,400)};
     // if the scoreboard hasn't been given the record columns yet, still post the scores
     try{try{if(!supaRec)throw 0;await supaInsert({...row,...rec})}catch(e){if(supaRec&&String(e.message)!=='400')throw e;supaRec=false;await supaInsert(row)}
       lastPush=sig;if(!$('hallScr').hidden)supaLoad()}catch(e){}return}
@@ -1401,7 +1511,8 @@ async function renderHall(){
     const ps=USER&&uids.length?await USER.profiles(uids):{};
     rows=docs.map(d=>{const acc=(ps[d.uid]||{}).name||'';const me=d.uid===myId&&d.pid===PROF.active;
       const nm=d.name||acc||'A delver';
-      const sub=[many&&acc&&acc!==nm?acc:'',hallTab==='delve'?d.delveScore+' best score':''].filter(Boolean).join(' · ');
+      const nb=d.badges?d.badges.split(',').filter(Boolean).length:0;
+      const sub=[many&&acc&&acc!==nm?acc:'',hallTab==='delve'?d.delveScore+' best score':'',nb?nb+' badge'+(nb>1?'s':''):''].filter(Boolean).join(' · ');
       return{name:nm+(me?' (you)':''),sub,val:hallTab==='daily'?d.daily.score:hallTab==='delve'?'Depth '+d.delveDepth:hallTab==='rec'?d[RK].toLocaleString()+RU:d.story,me}});
     note.textContent=SUPA?(supaErr?'Can\'t reach the scoreboard right now. Your runs are still saved under Mine.':'Everyone\'s best scores, from every device. Playing as '+activeName()+'. God mode runs don\'t count.')
       :!DB?'Sign in to Claude to see the shared board. Your runs are saved under Mine.'
@@ -2037,6 +2148,9 @@ $('toMapBtn').addEventListener('click',openMap);
 $('mapBack').addEventListener('click',openTitle);
 $('mapHall').addEventListener('click',()=>openHall());
 $('hallBtn').addEventListener('click',()=>openHall());
+const showBadges=()=>{openBadges();if(SUPA)supaLoad().then(()=>{if(!$('badgeSheet').hidden)openBadges()});else watchHall()};
+$('badgeBtn').addEventListener('click',showBadges);$('hallBadges').addEventListener('click',showBadges);
+$('badgeClose').addEventListener('click',()=>{$('badgeSheet').hidden=true});
 $('dailyBtn').addEventListener('click',()=>{G=null;startDaily()});
 $('hallDaily').addEventListener('click',()=>{G=null;startDaily()});
 $('hallBack').addEventListener('click',()=>{if(G&&mode!=='talk')openTitle();else openMap()});
