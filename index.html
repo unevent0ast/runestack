@@ -150,10 +150,17 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .tasks{display:flex;flex-wrap:wrap;gap:6px}
 .tasks span{font-family:var(--font-ui);font-size:10px;letter-spacing:.04em;background:var(--stone);border:2px solid var(--edge);padding:3px 6px;color:var(--ink);font-variant-numeric:tabular-nums}
 .tasks span.done{border-color:#4a8a5a;color:#9fe0b0}
-.potgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.sheet.clear{background:none;pointer-events:none;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.sheet.clear .card{pointer-events:auto}
+.potcard{gap:8px;padding:12px;box-shadow:0 4px 0 var(--shadow),0 -6px 24px rgba(0,0,0,.35)}
+.potcard h3{font-size:18px}
+.potcard p{font-size:14px}
+.potgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
 .potgrid button{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;text-align:left;background:var(--cave);border:2px solid var(--edge);box-shadow:0 3px 0 var(--shadow);padding:8px;color:var(--ink);font-family:var(--font-display);cursor:pointer}
 .potgrid button i{width:22px;height:22px;border:2px solid var(--shadow);display:block}
-.potgrid button b{font-size:15px;font-weight:600;display:block}
+.potgrid button b{font-size:14px;font-weight:600;display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.potgrid button{min-width:0;padding:7px 6px;gap:6px}
+.potgrid button i{width:18px;height:18px}
 .potgrid button small{font-size:12px;color:var(--muted);display:block}
 .potgrid button.good{border-color:var(--torch)}
 .potgrid button.good small{color:var(--torch)}
@@ -277,8 +284,8 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
   </div>
 </div>
 
-<div class="sheet" id="potSheet" hidden>
-  <div class="card">
+<div class="sheet clear" id="potSheet" hidden>
+  <div class="card potcard">
     <h3>Pour the potion</h3>
     <p id="potLead">Turn this stack's top gems into:</p>
     <div class="potgrid" id="potGrid"></div>
