@@ -52,3 +52,9 @@ create or replace view public.daily_best with (security_invoker = on) as
   group by device, player, day;
 
 grant select on public.best, public.daily_best to anon;
+
+-- Supabase's default grants give the public key far more than the game needs.
+-- Strip them back to exactly: read the scoreboard, add a score.
+revoke all on public.scores, public.best, public.daily_best from anon, authenticated;
+grant select, insert on public.scores to anon;
+grant select on public.best, public.daily_best to anon;
