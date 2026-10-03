@@ -24,7 +24,7 @@ html{box-sizing:border-box;height:100%}
 *,*::before,*::after{box-sizing:inherit}
 body{height:100%;margin:0;background:var(--cave);color:var(--ink);font-family:var(--font-display);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
-.app{height:100%;max-width:460px;margin:0 auto;padding-inline:16px;padding-block:8px;display:flex;flex-direction:column;gap:8px}
+.app{height:100%;max-width:460px;margin:0 auto;padding-inline:12px;padding-block:6px;display:flex;flex-direction:column;gap:6px}
 .top{display:flex;flex-direction:column;gap:6px}
 .row{display:flex;align-items:center;gap:8px}
 .row h1{flex:1;min-width:0;margin:0;font-size:20px;font-weight:700;color:var(--torch);text-shadow:2px 2px 0 var(--shadow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
@@ -44,11 +44,12 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .bar{height:10px;background:var(--shadow);border:2px solid var(--edge);position:relative}
 .bar.thin{height:8px;flex:1}
 .bar div{position:absolute;inset:0 auto 0 0;width:0;background:repeating-linear-gradient(90deg,var(--torch) 0 6px,#c97e2a 6px 8px);transition:width .3s steps(6)}
-.chestrow{display:flex;align-items:center;gap:8px}
+.chestrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px}
+.chestrow .bar.thin{min-width:60px}
 #stage{flex:1;min-height:0;position:relative;display:flex;align-items:flex-start;justify-content:center}
 #board{touch-action:none}
 #toast{position:absolute;left:50%;top:6px;transform:translateX(-50%);background:var(--parch);color:var(--parch-ink);font-family:var(--font-ui);font-size:11px;padding:6px 10px;border:2px solid var(--parch-edge);box-shadow:0 3px 0 var(--shadow);white-space:nowrap;pointer-events:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.prompt{min-height:56px;display:flex;align-items:center;gap:8px;background:var(--stone);border:2px solid var(--edge);padding:5px 8px 5px 5px;box-shadow:0 3px 0 var(--shadow)}
+.prompt{min-height:48px;display:flex;align-items:center;gap:8px;background:var(--stone);border:2px solid var(--edge);padding:5px 8px 5px 5px;box-shadow:0 3px 0 var(--shadow)}
 .prompt p{margin:0;flex:1;min-width:0;font-size:14px;line-height:1.25}
 .sw{display:inline-block;width:10px;height:10px;border:2px solid var(--shadow);vertical-align:-1px;margin-right:2px}
 #pbtns{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
@@ -164,8 +165,7 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
       <div class="stat"><span class="lab">Score</span><b id="score">0</b></div>
       <div class="foe" id="foeChip"><canvas class="pix pf" id="foePic" width="16" height="16" style="width:32px;height:32px"></canvas><span><span class="lab" id="foeName">Grukk</span><b id="foeIn">in 3</b></span></div>
     </div>
-    <div class="chestrow"><span class="lab">Chest</span><div class="bar thin"><div id="fill"></div></div><span class="lab" id="meterTxt">0/30</span><span class="lab turn">Turn <b id="turnN">0</b></span><span class="flames" id="hudDiff" aria-label="Difficulty"></span></div>
-    <div class="tasks" id="tasks" hidden></div>
+    <div class="chestrow"><span class="lab">Chest</span><div class="bar thin"><div id="fill"></div></div><span class="lab" id="meterTxt">0/30</span><span class="lab turn">Turn <b id="turnN">0</b></span><span class="flames" id="hudDiff" aria-label="Difficulty"></span><div class="tasks" id="tasks" hidden></div></div>
   </header>
 
   <main id="stage">
@@ -343,13 +343,13 @@ const CHARS={
 };
 const TRICK_BY={boulder:'orc',hex:'witch',brew:'witch',crate:'warlock',freeze:'rime',spore:'myconid',quake:'golem'};
 // terrace slots: A,B,C are the lower ledges (height 1), D,E,F the upper ledges (height 2)
-const TS={A:[-1,-2,1],B:[0,-3,1],C:[1,-3,1],D:[-1,-3,2],E:[0,-4,2],F:[1,-4,2]};
+const TS={A:[-2,-1,1],B:[-1,-2,1],C:[1,-3,1],D:[0,-3,2],E:[2,-3,1],F:null};
 const LEVELS=[
   {name:'The Cave Mouth',foe:'wizard',colors:4,seeds:3,diff:1,goal:{type:'gems',n:50},tasks:[{k:'ledge',n:1}],seals:{},trick:null,
    ledges:{A:[0,5],B:[2,5,1],C:[3,5]},
    intro:[['wizard','Our first real cavern. Same rules as the lesson: matching gems tumble together, and 10 on top burst.'],
           ['wizard','Tip: drag a stack over a slab and arrows show where every gem will go before you let go.'],
-          ['wizard','Two ledges here want gems you can build beside them. Once a ledge opens, any pile that bursts up there scores double.']],
+          ['wizard','The ledges at the back want gems you can build beside them. Once a ledge opens, any pile that bursts up there scores double.']],
    win:[['wizard','Splendid work! Now, deeper. Do you smell that? Orc.']]},
   {name:'Orc Warren',foe:'orc',colors:4,seeds:3,diff:2,goal:{type:'gems',n:80},tasks:[{k:'boulder',n:4}],seals:{'-2,2':25,'2,0':40},trick:{kind:'boulder',every:4},
    ledges:{A:[1,5],B:[0,6],C:[3,5],D:[2,6],E:[0,7,1],F:[1,6]},
@@ -414,7 +414,7 @@ function passText(L){const g=L.goal,parts=[];
 const GOAL_TEXT=L=>({gems:'Burst '+L.goal.n+' gems',clears:'Clear '+L.goal.n+' stacks',climb:'Open all 6 ledges',score:'Reach '+L.goal.n+' points',endless:L.daily?'Score as much as you can':'Go as deep as you can',tutorial:'Learn the basics'})[L.goal.type];
 
 const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-const R3=Math.sqrt(3),SQ=0.75,PL=3,EH=7,CHEST_EVERY=30,DRAG_OFF=14,TNT_FUSE=3,TNT_BITE=4;
+const R3=Math.sqrt(3),SQ=0.75,PL=3,EH=5,CHEST_EVERY=30,DRAG_OFF=14,TNT_FUSE=3,TNT_BITE=4;
 const SAVE_CAMP='runestack-camp-v1',SAVE_RUN='runestack-run-v1';
 
 /* ================= state ================= */
@@ -444,7 +444,7 @@ function newLevel(i,def){
   if(def){def.cells.forEach(d=>{const c=mkCell(d.q,d.r,d.elev);if(d.lock){c.lock={...d.lock};c.orig={...d.lock}}c.chest=!!d.chest;c.seal=d.seal||0;c.rubble=!!d.rubble;c.ice=d.ice||0;c.shroud=!!d.shroud;c.fungus=!!d.fungus;if(d.gate){c.gate=d.gate;c.gateId=d.gateId||0}c.stack=(d.stack||[]).slice();cells[key(d.q,d.r)]=c})}
   else{
     for(let q=-2;q<=2;q++)for(let r=-2;r<=2;r++){if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))>2)continue;cells[key(q,r)]=mkCell(q,r,0)}
-    Object.entries(L.ledges).forEach(([id,[col,n,chest]])=>{const[q,r,e]=TS[id];const c=mkCell(q,r,e);c.lock={col,n};c.orig={col,n};c.chest=!!chest;cells[key(q,r)]=c});
+    Object.entries(L.ledges).forEach(([id,[col,n,chest]])=>{if(!TS[id])return;const[q,r,e]=TS[id];const c=mkCell(q,r,e);c.lock={col,n};c.orig={col,n};c.chest=!!chest;cells[key(q,r)]=c});
     Object.entries(L.seals||{}).forEach(([k,n])=>{if(cells[k])cells[k].seal=n});
   }
   G={lv:def?'delve':i,def:def||null,cells,tray:[],score:0,powers:{...(def?(def.daily?START_BAG:CAMP.delve.bag):CAMP.bag)},cleared:0,clears:0,gems:0,tk:{},trickIn:L.trick?L.trick.every:0,trickIdx:0,turns:0};
@@ -813,7 +813,7 @@ function win(){
   mode='won';snapshot=null;updateUI();
   const reward=openChest(true);
   recordRun();
-  const L=LV(),gift=['wizard','Take this from the chest we found: '+reward.replace('Chest! ','')+'.'];
+  const L=LV(),bonus=L.kind==='challenge'?openChest(true):null,gift=['wizard','Take this from the chest we found: '+reward.replace('Chest! ','')+(bonus?', and from the second chest: '+bonus.replace('Chest! ',''):'')+'.'];
   if(isDelve()){
     const d=CAMP.delve;d.bag={...(G.realPowers||G.powers)};d.best=Math.max(d.best||0,L.depth);d.depth=L.depth+1;d.seed=null;
     saveAll();store(()=>localStorage.setItem(runKey(),''));
@@ -888,45 +888,47 @@ function genDelveDef(depth,seed,ease){
   }
   const cells=[...floor].map(k=>{const[q,r]=k.split(',').map(Number);return{q,r,elev:0,stack:[]}});
   const used=new Set(floor);
-  // ledges: a lower tier at the back of the cave, then an upper tier reachable only from it
-  const ledge=(q,r,tier)=>{const col=ri(colors),n=Math.max(4,Math.min(9,4+tier+ri(2)+Math.floor(depth/4)-ease));
+  // ledges: one row along the back, every ledge touching the floor. Some are high ledges (x3).
+  const ledge=(q,r,tier)=>{const col=ri(colors),n=Math.max(4,Math.min(8,4+tier+ri(2)+Math.floor(depth/5)-ease));
     used.add(key(q,r));const d={q,r,elev:tier,stack:[],lock:{col,n},chest:R()<.4};cells.push(d);return d};
-  const t1c=[];used.forEach(k=>{const[q,r]=k.split(',').map(Number);nb(q,r).forEach(([nq,nr])=>{const kk=key(nq,nr);if(inQ(nq)&&!used.has(kk)&&yOf(nq,nr)<-1&&!t1c.includes(kk))t1c.push(kk)})});
-  const t1=t1c.sort(()=>R()-.5).slice(0,2+ri(3)).map(k=>{const[q,r]=k.split(',').map(Number);return ledge(q,r,1)});
-  if(depth>=2){
-    const t2c=[];t1.forEach(d=>nb(d.q,d.r).forEach(([nq,nr])=>{const kk=key(nq,nr);if(inQ(nq)&&!used.has(kk)&&!nb(nq,nr).some(([a,b])=>floor.has(key(a,b)))&&!t2c.includes(kk))t2c.push(kk)}));
-    t2c.sort(()=>R()-.5).slice(0,1+ri(Math.min(3,1+Math.floor(depth/3)))).forEach(k=>{const[q,r]=k.split(',').map(Number);ledge(q,r,2)});
-  }
-  // starting gems and rubble
-  const fl=cells.filter(c=>!c.elev&&(c.q||c.r)).sort(()=>R()-.5);
-  const seeds=Math.min(6,2+ri(2)+Math.floor(depth/4));
-  fl.slice(0,seeds).forEach(c=>{const a=ri(colors),n=2+ri(3);for(let i=0;i<n;i++)c.stack.push(a);if(depth>=3&&R()<.4){let b=ri(colors);if(b===a)b=(b+1)%colors;for(let i=0;i<1+ri(2);i++)c.stack.push(b)}});
-  let fi=seeds;
-  if(depth>=4)fl.slice(fi,fi+=ri(2)+(depth>=7?1:0)).forEach(c=>{c.rubble=true});
-  // deeper caverns mix in the special obstacles
-  if(depth>=3)fl.slice(fi,fi+=1+ri(2)).forEach(c=>{if(c.stack.length)return;const a=ri(colors);let b=(a+1+ri(colors-1))%colors;for(let m=0;m<2+ri(3);m++)c.stack.push(b);for(let m=0;m<2+ri(2);m++)c.stack.push(a);c.shroud=true});
-  if(depth>=5)fl.slice(fi,fi+=1+ri(depth>=9?3:2)).forEach(c=>{if(c.stack.length)return;const a=ri(colors);for(let m=0;m<3+ri(3);m++)c.stack.push(a);c.ice=1+ri(depth>=8?2:1)});
-  if(depth>=8)fl.slice(fi,fi+=1+ri(2)).forEach(c=>{if(!c.stack.length)c.fungus=true});
-  if(depth>=6&&R()<.6){const open=cells.filter(c=>!c.elev&&!c.stack.length&&!c.fungus&&!c.rubble);let bp=null,bd=-1;
-    for(let i=0;i<20&&open.length>1;i++){const a=open[ri(open.length)],b=open[ri(open.length)];const d=Math.max(Math.abs(a.q-b.q),Math.abs(a.r-b.r),Math.abs(a.q+a.r-b.q-b.r));if(d>bd){bd=d;bp=[a,b]}}
-    if(bp&&bd>=3){bp[0].gate=key(bp[1].q,bp[1].r);bp[1].gate=key(bp[0].q,bp[0].r);bp[0].gateId=bp[1].gateId=0}}
-  // foe, goal, name
+  const lc=[];used.forEach(k=>{const[q,r]=k.split(',').map(Number);nb(q,r).forEach(([nq,nr])=>{const kk=key(nq,nr);if(inQ(nq)&&!used.has(kk)&&yOf(nq,nr)<-1&&!lc.includes(kk))lc.push(kk)})});
+  const nLedges=Math.min(lc.length,4,2+(depth>=4?1:0)+(R()<.3?1:0));let highs=depth>=2?(depth>=6?2:1):0;
+  lc.sort(()=>R()-.5).slice(0,nLedges).forEach(k=>{const[q,r]=k.split(',').map(Number);const hi=highs>0&&R()<.45;if(hi)highs--;ledge(q,r,hi?2:1)});
+  // foe first, since its trick is one of the cavern's obstacle themes
   const pool=['orc','witch','warlock'];if(depth>=5)pool.push('rime');if(depth>=7)pool.push('myconid');if(depth>=4)pool.push('golem');
   const foe=depth===1?null:pick(pool);
+  // obstacle themes: at most one (two from depth 7), and the foe's own obstacle counts toward that
+  const themes=[];const foeTheme={orc:'rubble',rime:'ice',myconid:'fungus'}[foe];if(foeTheme)themes.push(foeTheme);
+  const avail=['shroud','rubble','ice','gates','fungus'].filter((t,i)=>depth>=[3,4,5,6,8][i]&&!themes.includes(t));
+  const maxThemes=depth<3?0:(depth>=7?2:1)-(ease>=2?1:0);
+  while(themes.length<maxThemes&&avail.length)themes.push(avail.splice(ri(avail.length),1)[0]);
+  // starting gems
+  const fl=cells.filter(c=>!c.elev&&(c.q||c.r)).sort(()=>R()-.5);
+  const seeds=Math.min(5,2+ri(2)+Math.floor(depth/5));
+  fl.slice(0,seeds).forEach(c=>{const a=ri(colors),n=2+ri(3);for(let i=0;i<n;i++)c.stack.push(a);if(depth>=3&&R()<.4){let b=ri(colors);if(b===a)b=(b+1)%colors;for(let i=0;i<1+ri(2);i++)c.stack.push(b)}});
+  let fi=seeds;const floorN=cells.filter(c=>!c.elev).length;let blocked=0;const blockCap=Math.max(2,Math.floor(floorN*.2));
+  const take=n=>{const r=fl.slice(fi,fi+n);fi+=n;return r};
+  if(themes.includes('shroud'))take(1+ri(2)).forEach(c=>{const a=ri(colors);let b=(a+1+ri(colors-1))%colors;for(let m=0;m<2+ri(3);m++)c.stack.push(b);for(let m=0;m<2+ri(2);m++)c.stack.push(a);c.shroud=true});
+  if(themes.includes('ice'))take(1+ri(2)).forEach(c=>{const a=ri(colors);for(let m=0;m<3+ri(3);m++)c.stack.push(a);c.ice=1+(depth>=8?ri(2):0)});
+  if(themes.includes('rubble')&&foe!=='orc')take(1+ri(2)).forEach(c=>{if(blocked<blockCap){c.rubble=true;blocked++}});
+  if(themes.includes('fungus')&&foe!=='myconid')take(1).forEach(c=>{if(blocked<blockCap){c.fungus=true;blocked++}});
+  if(themes.includes('gates')){const open=cells.filter(c=>!c.elev&&!c.stack.length&&!c.fungus&&!c.rubble);let bp=null,bd=-1;
+    for(let i=0;i<20&&open.length>1;i++){const a=open[ri(open.length)],b=open[ri(open.length)];const d=Math.max(Math.abs(a.q-b.q),Math.abs(a.r-b.r),Math.abs(a.q+a.r-b.q-b.r));if(d>bd){bd=d;bp=[a,b]}}
+    if(bp&&bd>=3){bp[0].gate=key(bp[1].q,bp[1].r);bp[1].gate=key(bp[0].q,bp[0].r);bp[0].gateId=bp[1].gateId=0}}
   const tk=foe==='witch'?(R()<.5?'brew':'hex'):TRICK_OF[foe];
   const trick=foe?{kind:tk,every:Math.max(3,6-Math.floor(depth/3))+(foe==='warlock'?1:0)+(foe==='witch'?3:0)+ease}:null;
   const goal={type:'gems',n:Math.max(40,Math.min(170,40+depth*10)-ease*15)};
-  // one bonus objective from depth 2, built only from things this cavern can actually produce
+  // one bonus objective from depth 2, built only from things this cavern can actually produce, scaled to the gem goal
   const tasks=[];
-  if(depth>=2){const opts=[{k:'combo',n:depth>=6?2:1},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.min(60,20+depth*3)}];
-    const nLed=cells.filter(c=>c.elev).length;if(nLed>=2)opts.push({k:'ledge',n:Math.min(nLed,1+Math.floor(depth/5))});
+  if(depth>=2){const opts=[{k:'combo',n:depth>=8?2:1},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.max(15,Math.round(goal.n*.3/5)*5)}];
+    const nLed=cells.filter(c=>c.elev).length;if(nLed>=2)opts.push({k:'ledge',n:Math.min(nLed,1+Math.floor(depth/6))});
     if(foe==='orc'||cells.filter(c=>c.rubble).length>=2)opts.push({k:'boulder',n:foe==='orc'?3:2});
-    if(foe==='rime'||cells.filter(c=>c.ice).length>=2)opts.push({k:'ice',n:foe==='rime'?5:3});
+    if(foe==='rime'||cells.filter(c=>c.ice).length>=2)opts.push({k:'ice',n:foe==='rime'?4:2});
     if(foe==='myconid'||cells.some(c=>c.fungus))opts.push({k:'fungus',n:3});
     tasks.push(pick(opts))}
-  // chained slabs from depth 3: they break free as the gem count climbs (25 up to 100)
-  if(depth>=3){const free=cells.filter(c=>!c.elev&&!c.stack.length&&!c.gate&&!c.rubble&&!c.fungus&&(c.q||c.r)).sort(()=>R()-.5);
-    const nS=Math.min(4,1+Math.floor(depth/3)),top=Math.min(100,Math.round(goal.n*.75/5)*5);
+  // chained slabs from depth 3 (one, two from depth 7), within the clutter budget; easing removes them
+  if(depth>=3&&ease<3){const free=cells.filter(c=>!c.elev&&!c.stack.length&&!c.gate&&!c.rubble&&!c.fungus&&(c.q||c.r)).sort(()=>R()-.5);
+    const nS=Math.max(0,Math.min(blockCap-blocked,(depth>=7?2:1)-(ease>=1?1:0))),top=Math.min(100,Math.round(goal.n*.6/5)*5);
     free.slice(0,nS).forEach((c,i)=>{c.seal=Math.max(25,Math.round((25+(top-25)*(i/Math.max(1,nS-1)))/5)*5)})}
   const name='Depth '+depth+' · '+pick(PLACE_A)+' '+pick(PLACE_B);
   return{delve:true,depth,seed,name,foe:foe||'wizard',colors,goal,tasks,trick,cells,seeds:0,ease};
@@ -972,8 +974,13 @@ function botPlay(def,seed,cap){
   }
   return{win:false,turns:cap};
 }
+// Difficulty rhythm: the real depth climbs gently (about 2 steps of difficulty per 3 depths),
+// every 5th cavern is a tough one with an extra chest, and the cavern after a few normal ones is a breather.
+function delveKind(depth){return depth>=5&&depth%5===0?'challenge':depth>=3&&depth%4===3?'breather':'normal'}
+function delveHeat(depth){const base=Math.max(1,Math.round(1+(depth-1)*.65)),k=delveKind(depth);return Math.max(1,base+(k==='challenge'?2:k==='breather'?-2:0))}
 function buildDelve(depth,seed){
   // generate, let the bot try it, ease it off if it struggles, and reroll the cavern if it's still unbeatable
+  const realDepth=depth,kind=delveKind(depth);depth=delveHeat(depth);
   let def=null,fallback=null;
   search:for(let roll=0;roll<5;roll++){
     const sd=seed+roll*7777;
@@ -985,11 +992,15 @@ function buildDelve(depth,seed){
     }
   }
   if(!def.scry){def=fallback;def.scry=null}
+  def.heat=depth;depth=realDepth;def.depth=realDepth;def.kind=kind;
+  def.name=def.name.replace(/^Depth \d+ · /,'Depth '+realDepth+' · '+(kind==='challenge'?'Perilous ':kind==='breather'?'Quiet ':''));
   // difficulty: how hard the bot found it (fewer wins, longer runs, more easing all mean harder)
   def.diff=Math.max(1,Math.min(5,1+(4-def.wins)+(def.scry>50?1:0)+(def.ease>=2?1:0)+(depth>=6?1:0)-(depth<=1?1:0)));
   const foe=def.trick?def.foe:null,goalLine={gems:'burst '+def.goal.n+' gems',clears:'clear '+def.goal.n+' stacks',score:'reach '+def.goal.n+' points',climb:'open every ledge'}[def.goal.type];
   def.intro=[['wizard',def.name.replace('Depth '+depth+' · ','The ')+', '+depth+' level'+(depth>1?'s':'')+' down.'],['wizard',passText(def)]];
   if(foe)def.intro.push([foe,FOE_LINES[foe][Math.floor(mulberry(seed+3)()*3)]]);
+  if(kind==='challenge')def.intro.splice(1,0,['wizard','Careful. This cavern is far more dangerous than the last. Clear it and we take an extra chest.']);
+  if(kind==='breather')def.intro.splice(1,0,['wizard','A quiet cavern. Let\'s catch our breath here.']);
   const dw=['','gentle','fair','tricky','hard','brutal'][def.diff];
   def.intro.push(['wizard',def.scry?'I scried a path through this place in about '+def.scry+' moves. It feels '+dw+'.':'My scrying clouds over here. This one may be rough. Use your tools.']);
   def.win=[['wizard',['Down we go!','Deeper still. The gems grow brighter.','Well delved, apprentice.','Onward. I can hear water below.'][depth%4]]];
@@ -1312,7 +1323,7 @@ function toggleEdit(){
   if(!['pick','over'].includes(mode))return;
   mode='edit';sel=-1;preview=null;$('over').hidden=true;updateUI();
 }
-function ledgeDef(c){if(c.orig)return{...c.orig};const id=Object.keys(TS).find(i=>TS[i][0]===c.q&&TS[i][1]===c.r);const d=id&&LV().ledges[id];return d?{col:d[0],n:d[1]}:{col:0,n:5}}
+function ledgeDef(c){if(c.orig)return{...c.orig};const id=Object.keys(TS).find(i=>TS[i]&&TS[i][0]===c.q&&TS[i][1]===c.r);const d=id&&LV().ledges[id];return d?{col:d[0],n:d[1]}:{col:0,n:5}}
 function edStack(){if(edT.type==='cell')return G.cells[edT.k].stack;let v=G.tray[edT.i];if(!Array.isArray(v)){v=[];G.tray[edT.i]=v}return v}
 function openEditor(t){hist.push(JSON.stringify(G));if(hist.length>200)hist.shift();redoS=[];edT=t;renderEditor();$('edit').hidden=false;$('edDone').focus()}
 function closeEditor(){if(edT&&edT.type==='tray'&&Array.isArray(G.tray[edT.i])&&!G.tray[edT.i].length)G.tray[edT.i]=null;if(G.tray.every(x=>!x))G.tray=genTray();edT=null;$('edit').hidden=true;saveAll();updateUI()}
@@ -1354,16 +1365,21 @@ function layout(){
   if(!w||!h)return;
   LW=Math.max(120,Math.floor(w/P));LH=Math.max(200,Math.floor(h/P));
   cv.width=LW;cv.height=LH;cv.style.width=LW*P+'px';cv.style.height=LH*P+'px';
-  const trayH=64;trayTop=LH-trayH;trayY=LH-18;
   let minX=9,maxX=-9,minY=9,maxY=-9,maxE=0;
   Object.values(G.cells).forEach(c=>{const x=1.5*c.q,y=R3*(c.r+c.q/2)*SQ;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);maxE=Math.max(maxE,c.elev)});
-  const half=R3/2*SQ;
-  const sw=(LW-8)/(maxX-minX+2),sh=(trayTop-12-34-maxE*EH-PL)/(maxY-minY+2*half);
-  s=Math.max(10,Math.floor(Math.min(sw,sh,30)));
-  T=s>=16?3:2;
+  const half=R3/2*SQ,TOP=16;
+  // the tray only needs to be as tall as one tray stack; size tiles first, then fit the tray to them, then size again
+  let trayH=46;
+  for(let pass=0;pass<2;pass++){
+    trayTop=LH-trayH;
+    const sw=(LW-8)/(maxX-minX+2),sh=(trayTop-6-TOP-maxE*EH-PL)/(maxY-minY+2*half);
+    s=Math.max(10,Math.floor(Math.min(sw,sh,34)));T=s>=16?3:2;
+    trayH=Math.max(40,Math.round(s*SQ*1.75+6*T+10));
+  }
+  trayTop=LH-trayH;trayY=LH-Math.max(12,Math.round(s*SQ*.9));
   cx=Math.round(LW/2-(minX+maxX)/2*s);
-  cy=trayTop-10-(maxY+half)*s;
-  const topEdge=cy+(minY-half)*s-maxE*EH-PL-34;
+  cy=trayTop-6-(maxY+half)*s;
+  const topEdge=cy+(minY-half)*s-maxE*EH-PL-TOP;
   if(topEdge>0)cy-=topEdge*.45;
   cy=Math.round(cy);
   buildBg();
