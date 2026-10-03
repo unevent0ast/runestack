@@ -150,6 +150,15 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .tasks{display:flex;flex-wrap:wrap;gap:6px}
 .tasks span{font-family:var(--font-ui);font-size:10px;letter-spacing:.04em;background:var(--stone);border:2px solid var(--edge);padding:3px 6px;color:var(--ink);font-variant-numeric:tabular-nums}
 .tasks span.done{border-color:#4a8a5a;color:#9fe0b0}
+.potgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.potgrid button{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;text-align:left;background:var(--cave);border:2px solid var(--edge);box-shadow:0 3px 0 var(--shadow);padding:8px;color:var(--ink);font-family:var(--font-display);cursor:pointer}
+.potgrid button i{width:22px;height:22px;border:2px solid var(--shadow);display:block}
+.potgrid button b{font-size:15px;font-weight:600;display:block}
+.potgrid button small{font-size:12px;color:var(--muted);display:block}
+.potgrid button.good{border-color:var(--torch)}
+.potgrid button.good small{color:var(--torch)}
+.potgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.potgrid button:focus-visible{outline:2px solid var(--torch);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.bar div{transition:none}}
 </style>
 
@@ -265,6 +274,15 @@ canvas.pix{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
     <div class="whoadd"><input id="whoInput" maxlength="16" placeholder="Type a name" autocomplete="off"><button class="btn gold sm" id="whoAdd">Add player</button></div>
     <p class="lab" id="whoNote" style="text-transform:none;letter-spacing:0;font-family:var(--font-display);font-size:13px"></p>
     <div class="acts"><button class="btn sm" id="whoRename">Rename</button><button class="btn sm" id="whoClose">Done</button></div>
+  </div>
+</div>
+
+<div class="sheet" id="potSheet" hidden>
+  <div class="card">
+    <h3>Pour the potion</h3>
+    <p id="potLead">Turn this stack's top gems into:</p>
+    <div class="potgrid" id="potGrid"></div>
+    <div class="acts"><button class="btn" id="potCancel">Cancel</button></div>
   </div>
 </div>
 
@@ -837,7 +855,7 @@ function undo(){
 }
 function shuffle(){if(mode!=='pick'||G.powers.shuffle<1)return;G.powers.shuffle--;G.tray=G.tray.map(x=>x?genStack():null);sel=-1;saveAll();updateUI()}
 function toolToggle(name){
-  if(name==='potion'&&mode==='potionPick'){potionK=null;mode=emptyCount()?'pick':'over';updateUI();return}
+  if(name==='potion'&&mode==='potionPick'){$('potSheet').hidden=true;potionK=null;mode=emptyCount()?'pick':'over';updateUI();return}
   if(mode===name){mode=emptyCount()?'pick':'over';if(mode==='over')showOver();updateUI();return}
   if(!['pick','over','hammer','tnt','potion'].includes(mode)||G.powers[name]<1)return;
   mode=name;sel=-1;$('over').hidden=true;updateUI();
@@ -851,7 +869,20 @@ function smash(k){
   mode='pick';saveAll();updateUI();
 }
 function usePotion(k){const c=G.cells[k];if(c.lock||!c.stack.length){toast('Pick a stack to pour the potion on');return}if(c.ice){toast('Frozen stacks resist potions. Crack the ice first.');return}
-  potionK=k;mode='potionPick';updateUI()}
+  potionK=k;mode='potionPick';updateUI();openPotSheet()}
+function openPotSheet(){
+  const c=G.cells[potionK],cur=topRun(c.stack).col,grid=$('potGrid');grid.innerHTML='';
+  // how many gems each color would gather from this stack's neighbors (useful choices first)
+  const opts=COLORS.slice(0,nColors()).map((col,i)=>{let n=0,piles=0;neighbors(potionK).forEach(nk=>{const nb=G.cells[nk];const t=topOf(nb);if(t===i||t===WILD){n+=topRun(nb.stack).n;piles++}});return{i,col,n,piles}})
+    .filter(o=>o.i!==cur).sort((a,b)=>b.n-a.n||a.i-b.i);
+  opts.forEach(o=>{const b=document.createElement('button');if(o.n)b.className='good';
+    const sw=document.createElement('i');sw.style.background=o.col.b;const t=document.createElement('span');
+    const nm=document.createElement('b');nm.textContent=o.col.n;const sm=document.createElement('small');
+    sm.textContent=o.n?'joins '+o.piles+' neighbor'+(o.piles>1?'s':'')+' (+'+o.n+')':'no neighbors match';t.append(nm,sm);b.append(sw,t);
+    b.addEventListener('click',()=>{$('potSheet').hidden=true;pourPotion(o.i)});grid.append(b)});
+  $('potLead').textContent='Turn this stack\'s top '+topRun(c.stack).n+' '+COLORS[cur].n+' into:';
+  $('potSheet').hidden=false;
+}
 function pourPotion(col){
   const k=potionK,c=G.cells[k];potionK=null;if(!c)return;
   recolorTop(c.stack,col);c.shroud=false;G.powers.potion--;snapshot=null;
@@ -1797,9 +1828,7 @@ function updateUI(){
   else if(mode==='hammer'){pt.textContent='Tap a stack, crate or boulder to smash it.';pb.append(mkBtn('Cancel','',()=>toolToggle('hammer')))}
   else if(mode==='tnt'){pt.textContent='Tap where to blow it. That stack is wiped and each neighbor loses its top '+TNT_BITE+'.';pb.append(mkBtn('Cancel','',()=>toolToggle('tnt')))}
   else if(mode==='potion'){pt.textContent='Tap a stack to pour the potion on its top gems.';pb.append(mkBtn('Cancel','',()=>toolToggle('potion')))}
-  else if(mode==='potionPick'){pt.textContent='Which color should the top gems become?';const g=document.createElement('div');g.className='potpick';
-    COLORS.slice(0,nColors()).forEach((c,i)=>{const b=document.createElement('button');b.style.background=c.b;b.setAttribute('aria-label',c.n);b.addEventListener('click',()=>pourPotion(i));g.append(b)});
-    pb.append(g);pb.append(mkBtn('Cancel','',()=>toolToggle('potion')))}
+  else if(mode==='potionPick'){pt.textContent='Choose a color for the potion.';pb.append(mkBtn('Cancel','',()=>toolToggle('potion')))}
   else if(mode==='anim'){}
   else if(mode==='over')pt.textContent='No room left. Use a tool or try again.';
   else if(mode==='won')pt.textContent='We did it!';
@@ -1909,7 +1938,10 @@ $('shufBtn').addEventListener('click',shuffle);
 $('hamBtn').addEventListener('click',()=>toolToggle('hammer'));
 $('tntBtn').addEventListener('click',()=>toolToggle('tnt'));
 $('potBtn').addEventListener('click',()=>toolToggle('potion'));
+$('potCancel').addEventListener('click',()=>toolToggle('potion'));
 window.addEventListener('resize',layout);
+// re-fit the board whenever the space around it changes (e.g. the hint bar grows a row of buttons)
+let lastStage='';if(window.ResizeObserver)new ResizeObserver(()=>{const st=$('stage'),k=st.clientWidth+'x'+st.clientHeight;if(k!==lastStage){lastStage=k;if(!$('game').hidden)layout()}}).observe($('stage'));
 paint($('wizPic'),'wizard');
 function syncGodToggle(){$('godToggle').textContent=GOD()?'On':'Off';$('godToggle').classList.toggle('on',GOD())}
 
