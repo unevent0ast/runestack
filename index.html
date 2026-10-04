@@ -423,11 +423,11 @@ const LEVELS=[
           ['wizard','A gift of our own down here: potion vials. Drop one and every stack it touches turns its color on top.'],
           ['wizard','A fifth gem lives down here, Amethyst.']],
    win:[['witch','Fine. Keep your shiny rocks.'],['wizard','One more. The warlock waits below.']]},
-  {name:'Warlock\'s Sanctum',foe:'warlock',colors:5,seeds:4,diff:3,goal:{type:'gems',n:100},tasks:[{k:'streak',n:3}],seals:{'-2,1':30,'2,0':60,'0,2':90},trick:{kind:'crate',every:5},
+  {name:'Warlock\'s Sanctum',foe:'warlock',colors:5,seeds:4,diff:3,goal:{type:'gems',n:100},tasks:[{k:'streak',n:4}],seals:{'-2,1':30,'2,0':60,'0,2':90},trick:{kind:'crate',every:5},
    ledges:{A:[0,6],B:[3,6],C:[4,6,1],D:[1,7],E:[2,8,1],F:[4,7]},
    intro:[['warlock','Your little lights gutter out down here, old man.'],
           ['wizard','Vex plants cursed crates that blow three turns later. A blast can help you as much as hurt you.'],
-          ['wizard','He wants you rattled. Stay steady: build a streak of three bursts and his wards break. Merging stacks in between keeps it going.']],
+          ['wizard','He wants you rattled. Stay steady: build a streak of four bursts and his wards break. Merging stacks in between keeps it going.']],
    win:[['warlock','This is not over.'],['wizard','It never is. Beyond lies the Deep Dark. Stay as long as you dare.']]},
   {name:'The Frozen Gallery',foe:'rime',colors:5,seeds:3,diff:3,goal:{type:'gems',n:120},tasks:[{k:'ice',n:5}],seals:{'-2,2':40,'2,0':70,'0,2':100},trick:{kind:'freeze',every:4},
    ledges:{A:[2,6],B:[3,6,1],C:[0,6],D:[4,7,1],E:[1,7],F:[3,8]},extra:{ice:4,shroud:2},
@@ -520,7 +520,7 @@ const BADGES=[
   {id:'spire',name:'Spire',r:0,icon:'tower',stat:'stack',min:15,desc:'Pile 15 gems on one slab',unit:'gems'},
   {id:'hoard',name:'Hoard',r:0,icon:'coins',stat:'move',min:1000,desc:'Score 1,000 points with one drop',unit:'points'},
   {id:'cataclysm',name:'Cataclysm',r:1,icon:'star',stat:'burst',min:13,desc:'Burst 13 gems at once',unit:'gems'},
-  {id:'wildfire',name:'Wildfire',r:1,icon:'flame',stat:'streak',min:5,desc:'Build a streak of 5',unit:'streak'},
+  {id:'wildfire',name:'Wildfire',r:1,icon:'flame',stat:'streak',min:6,desc:'Build a streak of 6',unit:'streak'},
   {id:'reaction',name:'Chain Reaction',r:1,icon:'bomb',stat:'booms',min:2,desc:'Set off 2 Blast gems with one drop',unit:'blasts'},
   {id:'delver',name:'Deep Delver',r:1,icon:'down',stat:'depth',min:10,desc:'Reach depth 10 in the Random Delve',unit:'deep'},
   {id:'prism',name:'Prism Heart',r:2,icon:'prism',stat:'colors',min:3,desc:'Burst 3 different colors with one drop',unit:'colors'},
@@ -1232,7 +1232,7 @@ function genDelveDef(depth,seed,ease){
   const goal={type:'gems',n:Math.max(40,Math.min(170,40+depth*10)-ease*15)};
   // one bonus objective from depth 2, built only from things this cavern can actually produce, scaled to the gem goal
   const tasks=[];
-  if(depth>=2){const opts=[{k:'streak',n:3},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.max(15,Math.round(goal.n*.3/5)*5)}];
+  if(depth>=2){const opts=[{k:'streak',n:depth>=8?5:4},{k:'big',n:1},{k:'color',col:ri(colors),n:Math.max(15,Math.round(goal.n*.3/5)*5)}];
     const nLed=cells.filter(c=>c.elev).length;if(nLed>=2)opts.push({k:'ledge',n:Math.min(nLed,1+Math.floor(depth/6))});
     if(foe==='orc'||cells.filter(c=>c.rubble).length>=2)opts.push({k:'boulder',n:foe==='orc'?3:2});
     if(foe==='rime'||cells.filter(c=>c.ice).length>=2)opts.push({k:'ice',n:foe==='rime'?4:2});
